@@ -23,6 +23,8 @@ contextBridge.exposeInMainWorld('Binance', {
     getBinance: (apiKey: string, apiSecret: string) => new Binance().options({
         APIKEY: apiKey,
         APISECRET: apiSecret,
-        test: isDev
+        useServerTime: true,
+        recvWindow: 60000,
+        test: isDev,
     }),
 });
