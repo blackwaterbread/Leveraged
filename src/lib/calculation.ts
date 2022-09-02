@@ -94,11 +94,11 @@ export function getFloatFixed(n: number) {
 
 export function getFixedNumber(n: number, fixed?: number) {
     if (fixed) {
-        const f = getFloatFixed(n);
-        return n.toLocaleString('ko-KR', { maximumFractionDigits: f });
+        return n.toLocaleString('ko-KR', { maximumFractionDigits: fixed });
     }
     else {
-        return n.toLocaleString('ko-KR', { maximumFractionDigits: fixed });
+        const f = getFloatFixed(n);
+        return n.toLocaleString('ko-KR', { maximumFractionDigits: f });
     }
 }
 
