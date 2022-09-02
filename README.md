@@ -14,7 +14,7 @@
 
 ## 설치 및 실행 방법
 
-### 1. [Github Release]() 에서 최신 버전을 다운로드 하여 App을 설치합니다.
+### 1. [Github Release](https://github.com/blackwaterbread/Leveraged/releases) 에서 최신 버전을 다운로드 하여 App을 설치합니다.
 
 ### 2. [Binance](https://binance.com) API를 발급 받아야 합니다. [Binance](https://binance.com)로 이동하여 로그인 합니다.
 
