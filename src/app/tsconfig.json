@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "esModuleInterop": true,
+    "noEmit": false,
+    "rootDir": "../",
+    "baseUrl": "./",
+    "outDir": "./dist",
+    "skipLibCheck": true
+  },
+  "include": ["./**/*", "../src/react-app-env.d.ts"]
+}

@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'NanumSquare';
+  font-weight: 400;
+  src: local('./assets/fonts/NanumSquareR.ttf'),
+}
+
+@font-face {
+  font-family: 'NanumSquare';
+  font-weight: 700;
+  src: local('./assets/fonts/NanumSquareB.ttf')
+}
+
+@font-face {
+  font-family: 'NanumSquare';
+  font-weight: 800;
+  src: local('./assets/fonts/NanumSquareEB.ttf')
+}
+
+@font-face {
+  font-family: 'NanumSquare';
+  font-weight: 300;
+  src: local('./assets/fonts/NanumSquareL.ttf')
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb{
+  background-color: #4A5568;
+  border-radius: 10px;
+}
+
+html {
+  width: 100vw;
+  height: 100vh;
+}
+
+body {
+  margin: 0;
+  font-family: 'NanumSquare', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+  transform: rotate(0.04deg);
+  overflow: hidden;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+#root {
+  width: 100%;
+  min-height: 100%;
+  background-color: #161A1E;
+}
