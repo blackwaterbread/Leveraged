@@ -160,7 +160,7 @@ function Fee(props: Props) {
           <SliderThumb />
         </Slider>
         <div className='flex justify-between pt-5'>
-          <Stats title='예상 사이즈' value={`${isNaN(size) ? '-' : size.toFixed(4)} ${fSymbol}`} />
+          <Stats title='예상 사이즈' value={`${isNaN(size) ? '-' : size.toFixed(4)} ${fSymbol ?? ''}`} />
           <Stats title='예상 수수료' value={`${isNaN(fee) ? '-' : fee.toFixed(3)} USDT`} />
         </div>
       </div>

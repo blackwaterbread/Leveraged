@@ -26,9 +26,9 @@ function LastFee(props: LastFeeProp) {
       <div className='flex space-x-12 items-center -mt-1'>
         <div className='flex flex-col py-1 justify-start'>
           <Stats
-            title={`${props.totalValue ? getFixedNumber(props.totalValue, 4) : '-'} ${fSymbol}`}
+            title={`${props.totalValue ? getFixedNumber(props.totalValue, 4) : '-'} ${fSymbol ?? ''}`}
             titleProps={{ textColor: sideColor, fontWeight: 'bold' }}
-            value={`(${props.totalValue && props.price ? getFixedNumber(props.totalValue * props.price, 1) : '-'} ${props.marginAsset})`}
+            value={`(${props.totalValue && props.price ? getFixedNumber(props.totalValue * props.price, 1) : '-'} ${props.marginAsset ?? ''})`}
             valueProps={{ textColor: sideColor }}
           />
         </div>
@@ -37,14 +37,14 @@ function LastFee(props: LastFeeProp) {
             className='flex space-x-2 justify-start'
             title='손익'
             titleProps={{ fontSize: 'sm' }}
-            value={`${props.realizedPnl ? getFixedNumber(props.realizedPnl, 4) : '-'} ${props.marginAsset}`}
+            value={`${props.realizedPnl ? getFixedNumber(props.realizedPnl, 4) : '-'} ${props.marginAsset ?? ''}`}
             valueProps={{ textColor: props.realizedPnl ? (props.realizedPnl > 0 ? Colors.bull : Colors.bear) : 'white' }}
           />
           <Stats
             className='flex space-x-2 justify-start'
             titleProps={{ fontSize: 'sm' }}
             title='수수료'
-            value={`${props.lastCommission ? getFixedNumber(props.lastCommission, 4) : '-'} ${props.commissionAsset}`}
+            value={`${props.lastCommission ? getFixedNumber(props.lastCommission, 4) : '-'} ${props.commissionAsset ?? ''}`}
           />
         </div>
       </div>
