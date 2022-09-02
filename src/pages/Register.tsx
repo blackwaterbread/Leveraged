@@ -1,6 +1,7 @@
 import { Button, Input, Text, useDisclosure } from "@chakra-ui/react";
 import { Colors } from "lib/theme";
 import { useEffect, useRef, useState } from "react";
+import BinanceClass from 'node-binance-api';
 import BinanceLogo from '../assets/logos/Binance.svg';
 const { Application, Binance } = window;
 
@@ -27,9 +28,9 @@ function Register(props: Props) {
       const apiKey = refAPIKey.current?.value;
       const apiSecret = refAPISecret.current?.value;
       if (apiKey && apiSecret) {
-        const binance = Binance.getBinance(apiKey, apiSecret);
+        const binance: BinanceClass = Binance.getBinance(apiKey, apiSecret);
+        await binance.useServerTime();
         const account = await binance.futuresAccount();
-        console.log(account);
         if (account.code) {
           setIsShowErrorMessage(true);
           setErrorCode(`Code ${account.code}, ${account.msg}`);

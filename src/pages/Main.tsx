@@ -56,6 +56,7 @@ function Main(props: Props) {
     if (props.authentication) {
       const { apiKey, apiSecret } = props.authentication;
       binance.current = Binance.getBinance(apiKey, apiSecret);
+      await binance.current!.useServerTime();
       const account = await binance.current!.futuresAccount();
       const streamKey = (await binance.current!.futuresGetDataStream()).listenKey;
       stream.current = new WebSocket(`${URL_WSS}${streamKey}`);
@@ -92,6 +93,7 @@ function Main(props: Props) {
   const requestLastTrades = async (symbol?: string) => {
     if (!symbol) return;
     if (!binance.current) return;
+    await binance.current!.useServerTime();
     const trades: IBinanceFuturesUserTrade[] = await binance.current.futuresUserTrades(symbol);
     const lastOrder = trades.pop();
     if (lastOrder) {
@@ -191,6 +193,7 @@ function Main(props: Props) {
   const onSymbolChanged: React.ChangeEventHandler<HTMLSelectElement> = async (e) => {
     if (!binance.current) return;
     const symbol = e.target.value;
+    await binance.current!.useServerTime();
     const [account, prices, mPrices] = await Promise.all([
       binance.current.futuresAccount(), 
       binance.current.futuresPrices(symbol), 
