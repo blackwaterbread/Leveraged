@@ -3,9 +3,8 @@
     "module": "commonjs",
     "esModuleInterop": true,
     "noEmit": false,
-    "rootDir": "../",
     "baseUrl": "./",
-    "outDir": "./dist",
+    "outDir": "../../build",
     "skipLibCheck": true
   },
   "include": ["./**/*", "../src/react-app-env.d.ts"]

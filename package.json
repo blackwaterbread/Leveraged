@@ -3,13 +3,16 @@
   "version": "0.1.2",
   "private": true,
   "author": "dayrain",
-  "main": "src/app/dist/app/app.js",
+  "main": "build/app.js",
   "homepage": "./",
   "build": {
     "appId": "com.dayrain.leveraged",
     "productName": "Leveraged",
     "copyright": "Copyright @2022 dayrain",
     "asar": true,
+    "extraMetadata": {
+      "main": "build/app.js"
+    },
     "mac": {
       "target": [
         "default"
@@ -61,7 +64,6 @@
     "start": "yarn build:electron && concurrently \"cross-env NODE_ENV=development BROWSER=none yarn react-start\" \"wait-on http://localhost:3000 && cross-env NODE_ENV=development electron .\"",
     "copy:electron": "cp src/app/dist/app/app.js build || copy src/app/dist/app/app.js build",
     "build:electron": "tsc -p ./src/app",
-    "build:before-eb": "yarn react-build && yarn build:electron",
     "build:eb": "yarn react-build && yarn build:electron && electron-builder",
     "build:eb:xos": "yarn react-build && yarn build:electron && electron-builder --mac",
     "build:eb:win32": "yarn react-build && yarn build:electron && electron-builder --win nsis:ia32",
