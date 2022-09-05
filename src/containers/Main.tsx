@@ -11,6 +11,7 @@ import LastFee from 'components/LastFee';
 import BinanceLogo from '../assets/logos/Binance.svg';
 import BinanceClass from 'node-binance-api';
 import { IoSettings, IoInformationCircle, IoExitOutline } from 'react-icons/io5';
+import { AuthenticationStore } from 'services/store';
 const { Application, Binance } = window;
 const URL_WSS = Application.isDevelopment() ? 'wss://stream.binancefuture.com/ws/' : 'wss://fstream.binance.com/ws/';
 
@@ -217,7 +218,7 @@ function Main(props: Props) {
   useEffect(() => { refreshLiqPrice(); refreshStreamMessageHandler(); }, [account, currentSymbol, priceLast])
 
   const onLogout = () => {
-    Application.delStore('authentication');
+    AuthenticationStore.clear();
     props.onLogout();
   }
 

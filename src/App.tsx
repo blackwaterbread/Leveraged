@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import Main from './containers/Main';
 import Register from 'containers/Register';
-
-const { Application } = window;
+import { AuthenticationStore } from 'services/store';
 
 function App() {
   const authentication = useRef<IAuthentication>();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
   const initalizeComponent = () => {
-    const auth = Application.getStore('authentication');
+    const auth = AuthenticationStore.get();
     if (auth) {
       authentication.current = auth;
       setIsAuthenticated(true);

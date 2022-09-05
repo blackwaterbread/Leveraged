@@ -1,8 +1,9 @@
-import { Button, Input, Text, useDisclosure } from "@chakra-ui/react";
+import { Button, Input, Text } from "@chakra-ui/react";
 import { Colors } from "lib/theme";
 import { useEffect, useRef, useState } from "react";
 import BinanceClass from 'node-binance-api';
 import BinanceLogo from '../assets/logos/Binance.svg';
+import { AuthenticationStore } from 'services/store';
 const { Application, Binance } = window;
 
 interface Props {
@@ -36,7 +37,7 @@ function Register(props: Props) {
           setErrorCode(`Code ${account.code}, ${account.msg}`);
         }
         else {
-          Application.setStore('authentication', { apiKey: apiKey, apiSecret: apiSecret });
+          AuthenticationStore.set({ apiKey: apiKey, apiSecret: apiSecret });
           props.onReloadApplication();
         }
       }
