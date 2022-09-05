@@ -60,10 +60,12 @@ function Fee(props: Props) {
   const [fee, setFee] = useState(0);
   const fSymbol = props.symbol?.replace('USDT', '').replace('BUSD', '');
   const leverage = Number(props.leverage);
-  const availableBalance = Number(props.availableBalance);
   const lastPrice = Number(props.lastPrice);
+  const availableBalance = Number(props.availableBalance);
   const getSize = (x: number) => availableBalance * (x / 100) / lastPrice * leverage;
-  const size = getSize(sliderValue);
+  const getFee = (ratio: number, size: number) => ((ratio / 100) * size * feeRate) * 2;
+  const stableSize = leverage * availableBalance;
+  const cryptoSize = getSize(sliderValue);
   const feeRate = feeLevel === 'taker' ? 0.0004 : 0.0002;
 
   const onChange = (value: number) => {
@@ -77,7 +79,7 @@ function Fee(props: Props) {
   }
 
   useEffect(() => {
-    setFee((sliderValue / 100) * (leverage * availableBalance) * feeRate * 2);
+    setFee(getFee(sliderValue, leverage * availableBalance));
   }, [availableBalance, leverage, sliderValue, feeLevel]);
 
   return (
@@ -100,12 +102,12 @@ function Fee(props: Props) {
           <Tbody>
             {
               Ratio.map(x => {
-                const fee = (x / 100) * (leverage * availableBalance) * feeRate * 2;
-                const xSize = getSize(x);
+                const cSize = getSize(x);
+                const fee = getFee(x, stableSize);
                 return (
                   <Tr key={`feeKey_${x}`}>
                     <Cell key={`feeKey_per_${x}`}>{x}%</Cell>
-                    <Cell key={`feeKey_size_${x}`}>{isNaN(xSize) ? '-' : xSize.toFixed(4)} {fSymbol}</Cell>
+                    <Cell key={`feeKey_size_${x}`}>{isNaN(cSize) ? '-' : cSize.toFixed(4)} {fSymbol}</Cell>
                     <Cell key={`feeKey_value_${x}`}>{isNaN(fee) ? '-' : fee.toLocaleString()} USDT</Cell>
                   </Tr>
                 )
@@ -160,7 +162,7 @@ function Fee(props: Props) {
           <SliderThumb />
         </Slider>
         <div className='flex justify-between pt-5'>
-          <Stats title='예상 사이즈' value={`${isNaN(size) ? '-' : size.toFixed(4)} ${fSymbol ?? ''}`} />
+          <Stats title='예상 사이즈' value={`${isNaN(cryptoSize) ? '-' : cryptoSize.toFixed(4)} ${fSymbol ?? ''}`} />
           <Stats title='예상 수수료' value={`${isNaN(fee) ? '-' : fee.toFixed(3)} USDT`} />
         </div>
       </div>
