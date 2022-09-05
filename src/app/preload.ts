@@ -11,12 +11,15 @@ contextBridge.exposeInMainWorld('Application', {
         chrome: () => process.versions.chrome,
         electron: () => process.versions.electron,
     },
-    getStore: (key: string) => store.get(key),
-    setStore: (key: string, value: number | string | object) => store.set(key, value),
-    delStore: (key: string) => store.delete(key),
     setSize: (width: number, height: number) => { ipcRenderer.send('setSize', width, height) },
     setResizable: (resizable: boolean) => { ipcRenderer.send('setResizable', resizable); },
     isDevelopment: () => process.env.NODE_ENV === 'development'
+});
+
+contextBridge.exposeInMainWorld('Store', {
+    get: (key: string) => store.get(key),
+    set: (key: string, value: number | string | object) => store.set(key, value),
+    delete: (key: string) => store.delete(key),
 });
 
 contextBridge.exposeInMainWorld('Binance', {

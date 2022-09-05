@@ -152,12 +152,14 @@ interface Window {
             chrome: () => string,
             electron: () => string,
         },
-        getStore: (key: string) => any,
-        setStore: (key: string, value: number | string | object) => void,
-        delStore: (key: string) => void,
         setSize: (width: number, height: number) => void,
         setResizable: (resizable: boolean) => void,
         isDevelopment: () => boolean
+    },
+    Store: {
+        get: (key: string) => any,
+        set: (key: string, value: number | string | object) => void,
+        delete: (key: string) => void,
     },
     Binance: {
         getBinance: (apiKey: string, apiSecret: string) => Binance,
