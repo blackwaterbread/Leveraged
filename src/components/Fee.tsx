@@ -47,14 +47,15 @@ const Cell = (props: TableCellProps) => (
 
 interface Props {
   symbol?: string,
-  setValue?: React.Dispatch<React.SetStateAction<number>>,
+  value: number,
+  setValue: React.Dispatch<React.SetStateAction<number>>,
   lastPrice?: string,
   leverage?: string,
   availableBalance?: string
 }
 
 function Fee(props: Props) {
-  const [sliderValue, setSliderValue] = useState(25);
+  // const [sliderValue, setSliderValue] = useState(25);
   const [showTooltip, setShowTooltip] = useState(false);
   const [feeLevel, setFeeLevel] = useState<string>('maker');
   const [fee, setFee] = useState(0);
@@ -65,22 +66,25 @@ function Fee(props: Props) {
   const getSize = (x: number) => availableBalance * (x / 100) / lastPrice * leverage;
   const getFee = (ratio: number, size: number) => ((ratio / 100) * size * feeRate) * 2;
   const stableSize = leverage * availableBalance;
-  const cryptoSize = getSize(sliderValue);
+  const cryptoSize = getSize(props.value);
   const feeRate = feeLevel === 'taker' ? 0.0004 : 0.0002;
 
   const onChange = (value: number) => {
-    setSliderValue(value);
+    props.setValue(value);
     setShowTooltip(true);
   }
 
   const onChangeEnd = (value: number) => {
-    if (props.setValue) props.setValue(value / 100);
+    props.setValue(value);
     setShowTooltip(false);
   }
 
+  const setVisibleTooltip = () => { setShowTooltip(true) }
+  const setHiddenTooltip = () => { setShowTooltip(false) }
+
   useEffect(() => {
-    setFee(getFee(sliderValue, leverage * availableBalance));
-  }, [availableBalance, leverage, sliderValue, feeLevel]);
+    setFee(getFee(props.value, leverage * availableBalance));
+  }, [availableBalance, leverage, feeLevel]);
 
   return (
     <div>
@@ -118,14 +122,15 @@ function Fee(props: Props) {
         <Slider
           id='slider'
           isDisabled={isNaN(fee)}
-          defaultValue={sliderValue}
+          defaultValue={props.value}
           min={0}
           max={100}
           colorScheme='messenger'
           onChange={onChange}
           onChangeEnd={onChangeEnd}
-          onMouseEnter={() => setShowTooltip(true)}
-          onMouseLeave={() => setShowTooltip(false)}
+          onMouseOver={setHiddenTooltip}
+          onMouseEnter={setVisibleTooltip}
+          onMouseLeave={setHiddenTooltip}
         >
           <SliderMark value={0} mt='2' fontSize='sm' textColor='gray.500' fontWeight='bold'>
             0%
@@ -144,7 +149,7 @@ function Fee(props: Props) {
           </SliderMark>
           <SliderMark
             hidden={!showTooltip}
-            value={sliderValue}
+            value={props.value}
             className='rounded-md'
             textAlign='center'
             bg='#F0B90B'
@@ -154,7 +159,7 @@ function Fee(props: Props) {
             ml='-5'
             w='12'
           >
-            {sliderValue}%
+            {props.value}%
           </SliderMark>
           <SliderTrack>
             <SliderFilledTrack bg='#F0B90B' />

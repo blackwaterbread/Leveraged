@@ -1,6 +1,6 @@
 {
   "name": "leveraged",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "author": "dayrain",
   "main": "build/app.js",
@@ -72,6 +72,7 @@
     "react-test": "react-scripts test",
     "react-eject": "react-scripts eject",
     "start": "yarn build:electron && concurrently \"cross-env NODE_ENV=development BROWSER=none yarn react-start\" \"wait-on http://localhost:3000 && cross-env NODE_ENV=development electron .\"",
+    "start-production": "yarn build:electron && concurrently \"cross-env NODE_ENV=development BROWSER=none yarn react-start\" \"wait-on http://localhost:3000 && cross-env NODE_ENV=production electron .\"",
     "copy:electron": "cp src/app/dist/app/app.js build || copy src/app/dist/app/app.js build",
     "build:electron": "tsc -p ./src/app",
     "build:eb": "yarn react-build && yarn build:electron && electron-builder",

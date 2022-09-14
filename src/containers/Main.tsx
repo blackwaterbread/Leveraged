@@ -47,9 +47,10 @@ function Main(props: Props) {
   const [lastTrade, setLastTrade] = useState<IStateLastTrade>();
   const [liqPrice, setLiqPrice] = useState<number>();
   const [expectedPosSide, setExpectedPosSide] = useState<TypePositionSide>('BUY');
-  const [expectedOpenPosRatio, setExpectedOpenPosRatio] = useState<number>(10);
+  const [expectedOpenPosRatio, setExpectedOpenPosRatio] = useState<number>(25);
   const prevSymbol = usePrevious(currentSymbol);
   const refCurrentSymbolPos = account?.positions?.find((x: any) => x.symbol === currentSymbol);
+  const currentAsset = account?.assets.find(x => x.asset === currentSymbol?.slice(-4));
 
   const initalizeComponent = async () => {
     Application.setSize(425, 900);
@@ -138,19 +139,28 @@ function Main(props: Props) {
       setLiqPrice(0);
       return;
     }
-    if (account && currentSymbol && refCurrentSymbolPos && priceLast?.price) {
-      const availableBalance = Number(account.availableBalance);
+    if (currentAsset && currentSymbol && refCurrentSymbolPos && price) {
+      const availableBalance = Number(currentAsset.availableBalance);
       const leverage = Number(refCurrentSymbolPos.leverage);
-      const lastPrice = price ?? Number(priceLast.price);
       const initalMargin = availableBalance * expectedOpenPosRatio;
       const liqP = getLiquidationPrice(currentSymbol,
         {
           walletBalance: initalMargin,
-          entryPrice: lastPrice,
-          positionAmount: initalMargin / lastPrice * leverage,
+          entryPrice: price,
+          positionAmount: initalMargin / price * leverage,
           side: expectedPosSide,
         }
       );
+      console.log({
+        availableBalance: availableBalance,
+        initalMargin: initalMargin,
+        leverage: leverage,
+        walletBalance: initalMargin,
+        entryPrice: price,
+        positionAmount: initalMargin / price * leverage,
+        side: expectedPosSide,
+      })
+      console.log(liqP);
       setLiqPrice(liqP);
     }
   }
@@ -214,7 +224,7 @@ function Main(props: Props) {
 
   useEffect(() => { initalizeComponent(); }, []);
   useEffect(() => { registerSubscribe(); }, [currentSymbol]);
-  useEffect(() => { refreshLiqPrice(); }, [expectedOpenPosRatio, expectedPosSide]);
+  useEffect(() => { refreshLiqPrice(); }, [expectedPosSide, expectedOpenPosRatio]);
   useEffect(() => { refreshLiqPrice(); refreshStreamMessageHandler(); }, [account, currentSymbol, priceLast])
 
   const onLogout = () => {
@@ -249,7 +259,7 @@ function Main(props: Props) {
       </div>
       <div className='min-w-[340px] w-full p-4 bg-[#1E2329] rounded-lg'>
         <header>
-          <Wallet availableBalance={account?.availableBalance} />
+          <Wallet asset={currentAsset?.asset} availableBalance={currentAsset?.availableBalance} />
           <Divider className='pt-1 mb-2' />
           <SelectSymbol
             onChange={onSymbolChanged}
@@ -287,10 +297,11 @@ function Main(props: Props) {
           <Divider className='py-1' />
           <Fee
             symbol={currentSymbol}
+            value={expectedOpenPosRatio}
             setValue={setExpectedOpenPosRatio}
             lastPrice={priceLast?.price}
             leverage={refCurrentSymbolPos?.leverage}
-            availableBalance={account?.availableBalance}
+            availableBalance={currentAsset?.availableBalance}
           />
         </main>
         <Divider className='py-1' />

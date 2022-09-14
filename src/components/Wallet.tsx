@@ -1,6 +1,7 @@
 import { Text } from "@chakra-ui/react";
 
 interface Props {
+  asset?: string,
   availableBalance?: string
 }
 
@@ -19,7 +20,7 @@ function Wallet(props: Props) {
         fontWeight='bold'
         textColor='white'
       >
-        {props.availableBalance ? Number(props.availableBalance).toFixed(2) : '-'} USDT
+        {props.availableBalance ? Number(props.availableBalance).toFixed(2) : '-'} {props.asset ?? '-'}
       </Text>
     </div>
   )

@@ -49,7 +49,7 @@ const Cell = (props: TableCellProps) => (
 function Margin(props: Props) {
   const mode = props.isolated === undefined ? '없음' : props.isolated ? '격리' : '교차';
   const isCross = mode === '교차';
-  const posSide = props.positionSide === 'BUY' ? '롱 청산가' : '숏 청산가';
+  const posSide = props.positionSide === 'BUY' ? '롱 청산 가격' : '숏 청산 가격';
   const posSideColor = props.positionSide === 'BUY' ? Colors.bull : Colors.bear;
   const posSideIcon = props.positionSide === 'BUY' ? <FcBullish size={36} /> : <FcBearish size={36} />
   const liqPriceTooltip = (

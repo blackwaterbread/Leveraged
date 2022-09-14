@@ -4,26 +4,34 @@
 
 @font-face {
   font-family: 'NanumSquare';
+  font-style: normal;
   font-weight: 400;
-  src: local('./assets/fonts/NanumSquareR.ttf'),
+  src: local('NanumSquareR');
+  src: url('assets/fonts/NanumSquareR.woff2') format('woff2');
 }
 
 @font-face {
   font-family: 'NanumSquare';
+  font-style: normal;
   font-weight: 700;
-  src: local('./assets/fonts/NanumSquareB.ttf')
+  src: local('NanumSquareB');
+  src: url('assets/fonts/NanumSquareB.woff2') format('woff2');
 }
 
 @font-face {
   font-family: 'NanumSquare';
+  font-style: normal;
   font-weight: 800;
-  src: local('./assets/fonts/NanumSquareEB.ttf')
+  src: local('NanumSquareEB');
+  src: url('assets/fonts/NanumSquareEB.woff2') format('woff2');
 }
 
 @font-face {
   font-family: 'NanumSquare';
+  font-style: normal;
   font-weight: 300;
-  src: local('./assets/fonts/NanumSquareL.ttf')
+  src: local('NanumSquareL');
+  src: url('assets/fonts/NanumSquareL.woff2') format('woff2');
 }
 
 ::-webkit-scrollbar {
