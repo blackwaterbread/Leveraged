@@ -71,7 +71,7 @@ interface PositionRisks {
 }
 
 export function getLiquidationPrice(symbol: string, positionRisks: PositionRisks) {
-    const { side, walletBalance, positionAmount, entryPrice } = positionRisks;
+    const { walletBalance, side, positionAmount, entryPrice } = positionRisks;
     const s1b = side === 'BUY' ? 1 : -1;
     const notionalSize = positionAmount * entryPrice;
     const mt = MLOOKUP.get(symbol) ?? MLOOKUP.get('OTHERS')!;

@@ -145,10 +145,10 @@ function Main(props: Props) {
       const initalMargin = availableBalance * expectedOpenPosRatio;
       const liqP = getLiquidationPrice(currentSymbol,
         {
-          walletBalance: initalMargin,
-          entryPrice: price,
-          positionAmount: initalMargin / price * leverage,
+          walletBalance: availableBalance,
           side: expectedPosSide,
+          positionAmount: initalMargin / price * leverage,
+          entryPrice: price
         }
       );
       console.log({
