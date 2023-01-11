@@ -2,6 +2,14 @@
 
 type TypePositionSide = 'BUY' | 'SELL';
 
+interface IPositionRisks {
+    walletBalance: number,
+    positionSize: number,
+    positionSide: 'BUY' | 'SELL',
+    leverage: number,
+    entryPrice: number,
+}
+
 interface IBinanceFuturesAccount {
     feeTier: number;
     canTrade: boolean;

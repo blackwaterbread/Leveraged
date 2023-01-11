@@ -45,46 +45,40 @@ const M50x = [
 ];
 
 const MLOOKUP = new Map([
-    ['BTCUSDT', M125x],
-    ['ETHUSDT', M100x],
-    ['ADAUSDT', M75x],
-    ['BNBUSDT', M75x],
-    ['DOTUSDT', M75x],
-    ['EOSUSDT', M75x],
-    ['ETCUSDT', M75x],
-    ['LINKUSDT', M75x],
-    ['LTCUSDT', M75x],
-    ['TRXUSDT', M75x],
-    ['XLMUSDT', M75x],
-    ['XMRUSDT', M75x],
-    ['XRPUSDT', M75x],
-    ['XTZUSDT', M75x],
-    ['BCHUSDT', M75x],
+    ['BTC', M125x],
+    ['ETH', M100x],
+    ['ADA', M75x],
+    ['BNB', M75x],
+    ['DOT', M75x],
+    ['EOS', M75x],
+    ['ETC', M75x],
+    ['LINK', M75x],
+    ['LTC', M75x],
+    ['TRX', M75x],
+    ['XLM', M75x],
+    ['XMR', M75x],
+    ['XRP', M75x],
+    ['XTZ', M75x],
+    ['BCH', M75x],
     ['OTHERS', M50x]
 ]);
 
-interface PositionRisks {
-    walletBalance: number,
-    side: 'BUY' | 'SELL',
-    positionAmount: number,
-    entryPrice: number,
-}
-
-export function getLiquidationPrice(symbol: string, positionRisks: PositionRisks) {
-    const { walletBalance, side, positionAmount, entryPrice } = positionRisks;
-    const s1b = side === 'BUY' ? 1 : -1;
-    const notionalSize = positionAmount * entryPrice;
-    const mt = MLOOKUP.get(symbol) ?? MLOOKUP.get('OTHERS')!;
+export function calculateLiquidationPrice(symbol: string, positionRisks: IPositionRisks) {
+    const { walletBalance, positionSize: size, positionSide, leverage, entryPrice } = positionRisks;
+    const side = positionSide === 'BUY' ? 1 : -1;
+    const asset = symbol.replace('USDT', '').replace('BUSD', '');
+    const notionalSize = walletBalance * leverage;
+    const mTable = MLOOKUP.get(asset) ?? MLOOKUP.get('OTHERS')!;
     let mRatio = 0, mAmount = 0;
-    for (const row of mt) {
-        if (notionalSize < row[0]) {
-            mRatio = row[1] / 100;
-            mAmount = row[2];
+    for (const mRow of mTable) {
+        if (notionalSize < mRow[0]) {
+            mRatio = mRow[1] / 100;
+            mAmount = mRow[2];
             break;
         }
     }
-    const f1 = walletBalance + mAmount - (s1b * notionalSize);
-    const f2 = (positionAmount * mRatio) - (s1b * positionAmount);
+    const f1 = walletBalance - mAmount - (side * size * entryPrice);
+    const f2 = (size * mRatio) - (side * size);
     return f1 / f2;
 }
 
@@ -104,4 +98,8 @@ export function getFixedNumber(n: number, fixed?: number) {
 
 export function convertMillisTime(time: number) {
     return DateTime.fromMillis(time).toLocaleString(DateTime.DATETIME_SHORT)
+}
+
+export function sum(array: Array<number> | Array<string>) {
+    return array.map(x => Number(x)).reduce((x, y) => x + y, 0);
 }

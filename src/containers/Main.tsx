@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Button, Divider, Text, Tooltip } from '@chakra-ui/react';
 import { usePrevious } from '../lib/hooks';
-import { getLiquidationPrice } from '../lib/calculation';
+import { calculateLiquidationPrice, sum } from '../lib/calculation';
 import Fee from '../components/Fee';
 import Margin from '../components/Margin';
 import PriceScrenner from '../components/PriceScreener';
@@ -37,20 +37,38 @@ interface IStateLastTrade {
   commissionAsset: string
 }
 
+interface IStateFuturesPrices {
+  last?: IStateLastPrice,
+  mark?: IBinanceMarkPrice
+}
+
+interface IState {
+  expectedPosSide: TypePositionSide,
+  expectedPosRatio: number,
+  liquidationPrice?: number,
+}
+
 function Main(props: Props) {
   const stream = useRef<WebSocket>();
   const binance = useRef<BinanceClass>();
-  const [account, setAccount] = useState<IBinanceFuturesAccount>();
-  const [currentSymbol, setCurrentSymbol] = useState<string>();
-  const [priceMark, setPriceMark] = useState<IBinanceMarkPrice>();
-  const [priceLast, setPriceLast] = useState<IStateLastPrice>();
-  const [lastTrade, setLastTrade] = useState<IStateLastTrade>();
-  const [liqPrice, setLiqPrice] = useState<number>();
-  const [expectedPosSide, setExpectedPosSide] = useState<TypePositionSide>('BUY');
-  const [expectedOpenPosRatio, setExpectedOpenPosRatio] = useState<number>(25);
-  const prevSymbol = usePrevious(currentSymbol);
-  const refCurrentSymbolPos = account?.positions?.find((x: any) => x.symbol === currentSymbol);
-  const currentAsset = account?.assets.find(x => x.asset === currentSymbol?.slice(-4));
+
+  const [currSymbol, setCurrSymbol] = useState<string>('');
+  const [lastResponse, setLastResponse] = useState<any>();
+  const [isRequireRefreshTrades, setIsRequireRefreshTrades] = useState(false);
+  const [isRequireCalculateLiqPrice, setIsRequireCalculateLiqPrice] = useState(false);
+
+  const [futuresAccount, setFuturesAccount] = useState<IBinanceFuturesAccount>();
+  const [futuresPrices, setFuturesPrices] = useState<IStateFuturesPrices>();
+  const [futuresLastTrade, setFuturesLastTrade] = useState<IStateLastTrade>();
+  const [state, setState] = useState<IState>({
+    expectedPosSide: 'BUY',
+    expectedPosRatio: 25,
+    liquidationPrice: 0,
+  });
+
+  const prevSymbol = usePrevious(currSymbol);
+  const currentPosition = futuresAccount?.positions?.find((x: any) => x.symbol === currSymbol);
+  const currentAsset = futuresAccount?.assets.find(x => x.asset === currSymbol?.slice(-4));
 
   const initalizeComponent = async () => {
     Application.setSize(425, 900);
@@ -61,39 +79,44 @@ function Main(props: Props) {
       await binance.current!.useServerTime();
       const account = await binance.current!.futuresAccount();
       const streamKey = (await binance.current!.futuresGetDataStream()).listenKey;
-      stream.current = new WebSocket(`${URL_WSS}${streamKey}`);
-      stream.current.onopen = () => {
-        console.log('[Stream] Successfully Connected');
+      if (!stream.current) {
+        stream.current = new WebSocket(`${URL_WSS}${streamKey}`);
+        stream.current.onopen = () => { console.log('[Stream] Successfully Connected'); }
+        stream.current.onmessage = onStreamUpdate;
+        setFuturesAccount(account);
       }
-      setAccount(account);
     }
   }
 
-  const registerSubscribe = () => {
-    if (currentSymbol && stream.current) {
-      if (prevSymbol) {
-        const requestUnsubscribe = JSON.stringify({
-          method: "UNSUBSCRIBE",
-          params: [
-            `${prevSymbol.toLowerCase()}@ticker`,
-            `${prevSymbol.toLowerCase()}@markPrice@1s`
-          ],
-        });
-        stream.current.send(requestUnsubscribe);
+  const refreshSymbolMarket = async (symbol: string) => {
+    if (!binance.current) return;
+    await binance.current!.useServerTime();
+    const [account, prices, mPrices] = await Promise.all([
+      binance.current.futuresAccount(),
+      binance.current.futuresPrices(symbol),
+      binance.current.futuresMarkPrice(symbol)
+    ]);
+    const lastPrice = prices[symbol];
+    setFuturesAccount(account);
+    setFuturesPrices({
+      last: {
+        price: lastPrice,
+        priceChange: '0',
+        priceChangePercent: '0'
+      },
+      mark: {
+        symbol: symbol,
+        markPrice: mPrices.markPrice,
+        eventTime: mPrices.time,
+        eventType: '',
+        fundingRate: mPrices.lastFundingRate,
+        fundingTime: mPrices.nextFundingTime
       }
-      const requestSubscribe = JSON.stringify({
-        method: "SUBSCRIBE",
-        params: [
-          `${currentSymbol.toLowerCase()}@ticker`,
-          `${currentSymbol.toLowerCase()}@markPrice@1s`
-        ],
-      });
-      stream.current.send(requestSubscribe);
-    }
+    });
+    setState({ ...state, liquidationPrice: getLiquidationPrice(Number(lastPrice)) });
   }
 
-  const requestLastTrades = async (symbol?: string) => {
-    if (!symbol) return;
+  const refreshLastTrades = async (symbol: string) => {
     if (!binance.current) return;
     await binance.current!.useServerTime();
     const trades: IBinanceFuturesUserTrade[] = await binance.current.futuresUserTrades(symbol);
@@ -102,135 +125,203 @@ function Main(props: Props) {
       const sameOrders = trades.filter(trade => trade.orderId === lastOrder.orderId);
       sameOrders.push(lastOrder);
       if (sameOrders.length > 0) {
-        const commission = sameOrders.map(x => x.commission).reduce((p, c) => Number(p) + Number(c), 0);
-        const realizedPnl = sameOrders.map(x => x.realizedPnl).reduce((p, c) => Number(p) + Number(c), 0);
-        const totalValue = sameOrders.map(x => x.qty).reduce((p, c) => Number(p) + Number(c), 0);
-        setLastTrade({
-          side: lastOrder.side, totalValue: totalValue, price: Number(lastOrder.price),
-          commission: commission, realizedPnl: realizedPnl, time: lastOrder.time,
-          commissionAsset: lastOrder.commissionAsset, marginAsset: lastOrder.marginAsset,
+        const commission = sum(sameOrders.map(x => x.commission));
+        const realizedPnl = sum(sameOrders.map(x => x.realizedPnl));
+        const totalValue = sum(sameOrders.map(x => x.qty));
+        setFuturesLastTrade({
+          side: lastOrder.side,
+          totalValue: totalValue,
+          price: Number(lastOrder.price),
+          commission: commission,
+          realizedPnl: realizedPnl,
+          time: lastOrder.time,
+          commissionAsset: lastOrder.commissionAsset,
+          marginAsset: lastOrder.marginAsset,
         });
       }
     }
     else {
-      setLastTrade({
-        side: undefined, totalValue: 0, price: 0,
-        commission: 0, realizedPnl: 0, time: 0,
-        commissionAsset: '', marginAsset: '',
+      setFuturesLastTrade({
+        side: undefined,
+        totalValue: 0,
+        price: 0,
+        commission: 0,
+        realizedPnl: 0,
+        time: 0,
+        commissionAsset: '',
+        marginAsset: '',
       });
     }
   }
 
-  const refreshStreamMessageHandler = () => {
-    if (stream.current) stream.current.onmessage = onUpdateAccount;
-  }
-
   const switchExpectedPosSide = () => {
-    setExpectedPosSide(expectedPosSide === 'BUY' ? 'SELL' : 'BUY');
+    setState({
+      ...state,
+      expectedPosSide: state.expectedPosSide === 'BUY' ? 'SELL' : 'BUY'
+    });
+    setIsRequireCalculateLiqPrice(true);
   }
 
-  const refreshLiqPrice = (price?: number) => {
-    if (expectedOpenPosRatio === 0) {
-      setLiqPrice(0);
-      return;
+  const getLiquidationPrice = (entryPrice?: number) => {
+    if (state.expectedPosRatio === 0) {
+      return 0;
     }
-    // 교차는 아직 계산 안됨.
-    if (refCurrentSymbolPos && !refCurrentSymbolPos.isolated) {
-      setLiqPrice(0);
-      return;
+    else if (currentPosition && !currentPosition.isolated) {
+      return 0;
     }
-    if (currentAsset && currentSymbol && refCurrentSymbolPos && price) {
-      const availableBalance = Number(currentAsset.availableBalance);
-      const leverage = Number(refCurrentSymbolPos.leverage);
-      const initalMargin = availableBalance * expectedOpenPosRatio;
-      const liqP = getLiquidationPrice(currentSymbol,
+    else if (currentAsset && currentPosition && entryPrice) {
+      const availableBalance = Number(currentAsset?.availableBalance);
+      const leverage = Number(currentPosition.leverage);
+      const initalMargin = availableBalance * (state.expectedPosRatio / 100);
+      const size = initalMargin * leverage / entryPrice;
+      const liquidationPrice = calculateLiquidationPrice(currSymbol,
         {
-          walletBalance: availableBalance,
-          side: expectedPosSide,
-          positionAmount: initalMargin / price * leverage,
-          entryPrice: price
+          // in isolated mode, wb = margin.
+          walletBalance: initalMargin,
+          positionSize: size,
+          positionSide: state.expectedPosSide,
+          leverage: leverage,
+          entryPrice: entryPrice
         }
       );
-      console.log({
-        availableBalance: availableBalance,
-        initalMargin: initalMargin,
-        leverage: leverage,
-        walletBalance: initalMargin,
-        entryPrice: price,
-        positionAmount: initalMargin / price * leverage,
-        side: expectedPosSide,
-      })
-      console.log(liqP);
-      setLiqPrice(liqP);
+      return liquidationPrice;
+    }
+    else {
+      return 0;
     }
   }
 
-  const onUpdateAccount = async (message: MessageEvent) => {
-    const response = JSON.parse(message.data);
-    console.log(response);
-    if (account) {
-      const pos = Array.from(account.positions);
-      switch (response.e) {
-        case 'ACCOUNT_CONFIG_UPDATE':
-          const p = pos.findIndex(v => v.symbol === response.ac.s);
-          pos[p].leverage = response.ac.l;
-          setAccount({ ...account, positions: pos });
-          break;
-        case 'ACCOUNT_UPDATE':
-          if (response.a.P.length > 0) {
-            const account = response.a.P[0];
-            const p = pos.findIndex(v => v.symbol === account.s);
-            pos[p].isolated = account.mt === 'isolated';
+  const handleStream = (response: any) => {
+    if (!futuresAccount) return;
+    const positions = [...futuresAccount.positions];
+    switch (response.e) {
+      case 'ACCOUNT_CONFIG_UPDATE':
+        const current = positions.findIndex(v => v.symbol === response.ac.s);
+        positions[current].leverage = response.ac.l;
+        setFuturesAccount({
+          ...futuresAccount,
+          positions: positions
+        });
+        setIsRequireCalculateLiqPrice(true);
+        break;
+      case 'ACCOUNT_UPDATE':
+        if (response.a.P.length > 0) {
+          const account = response.a.P[0];
+          const p = positions.findIndex(v => v.symbol === account.s);
+          positions[p].isolated = account.mt === 'isolated';
+        }
+        const tAssets = futuresAccount.assets;
+        tAssets[futuresAccount.assets.findIndex(x => x.asset === response.a.B[0].a)].availableBalance = response.a.B[0].cw;
+        setIsRequireRefreshTrades(true);
+        setFuturesAccount({
+          ...futuresAccount,
+          assets: tAssets,
+        });
+        break;
+      case 'markPriceUpdate':
+        setFuturesPrices({
+          ...futuresPrices,
+          mark: {
+            symbol: response.s,
+            eventTime: response.E,
+            markPrice: response.p,
+            eventType: response.e,
+            fundingRate: response.r,
+            fundingTime: response.T
           }
-          refreshLiqPrice();
-          await requestLastTrades(currentSymbol);
-          setAccount({ ...account, positions: pos, availableBalance: response.a.B[0].cw });
-          break;
-        case 'markPriceUpdate':
-          setPriceMark({
-            ...priceMark,
-            symbol: response.s, eventTime: response.E, markPrice: response.p,
-            eventType: response.e, fundingRate: response.r, fundingTime: response.T
-          });
-          break;
-        case '24hrTicker':
-          setPriceLast({ price: response.c, priceChange: response.p, priceChangePercent: response.P });
-          refreshLiqPrice(Number(response.c));
-          break;
-      }
+        });
+        break;
+      case '24hrTicker':
+        setIsRequireCalculateLiqPrice(true);
+        setFuturesPrices({
+          ...futuresPrices,
+          last: {
+            price: response.c,
+            priceChange: response.p,
+            priceChangePercent: response.P
+          }
+        });
+        break;
     }
   }
-
-  const onSymbolChanged: React.ChangeEventHandler<HTMLSelectElement> = async (e) => {
-    if (!binance.current) return;
-    const symbol = e.target.value;
-    await binance.current!.useServerTime();
-    const [account, prices, mPrices] = await Promise.all([
-      binance.current.futuresAccount(), 
-      binance.current.futuresPrices(symbol), 
-      binance.current.futuresMarkPrice(symbol)
-    ]);
-    const lastPrice = prices[symbol];
-    setAccount(account);
-    setCurrentSymbol(symbol);
-    setPriceLast({ price: lastPrice, priceChange: '0', priceChangePercent: '0' });
-    setPriceMark({
-      symbol: symbol, markPrice: mPrices.markPrice, eventTime: mPrices.time,
-      eventType: '', fundingRate: mPrices.lastFundingRate, fundingTime: mPrices.nextFundingTime
-    });
-    await requestLastTrades(symbol);
-    refreshLiqPrice(Number(lastPrice));
-  };
-
-  useEffect(() => { initalizeComponent(); }, []);
-  useEffect(() => { registerSubscribe(); }, [currentSymbol]);
-  useEffect(() => { refreshLiqPrice(); }, [expectedPosSide, expectedOpenPosRatio]);
-  useEffect(() => { refreshLiqPrice(); refreshStreamMessageHandler(); }, [account, currentSymbol, priceLast])
 
   const onLogout = () => {
     AuthenticationStore.clear();
     props.onLogout();
   }
+
+  const onStreamUpdate = async (message: MessageEvent) => {
+    const response = JSON.parse(message.data);
+    console.log(response);
+    setLastResponse(response);
+  }
+
+  const onSymbolChanged: React.ChangeEventHandler<HTMLSelectElement> = (e) => {
+    if (!binance.current) return;
+    const symbol = e.target.value;
+    setCurrSymbol(symbol);
+  }
+
+  const onChangePosRatio = (value: number) => {
+    setState({
+      ...state,
+      expectedPosRatio: value
+    });
+  }
+
+  useEffect(() => {
+    initalizeComponent();
+  }, []);
+
+  useEffect(() => {
+    if (!stream.current) return;
+    if (prevSymbol) {
+      const requestUnsubscribe = JSON.stringify({
+        method: 'UNSUBSCRIBE',
+        params: [
+          `${prevSymbol.toLowerCase()}@ticker`,
+          `${prevSymbol.toLowerCase()}@markPrice@1s`
+        ],
+      });
+      stream.current.send(requestUnsubscribe);
+      console.log('[Stream] Unsubscribe: ', requestUnsubscribe);
+    }
+
+    refreshSymbolMarket(currSymbol);
+    refreshLastTrades(currSymbol);
+    // setIsRequireRefreshTrades(true);
+
+    const requestSubscribe = JSON.stringify({
+      method: 'SUBSCRIBE',
+      params: [
+        `${currSymbol.toLowerCase()}@ticker`,
+        `${currSymbol.toLowerCase()}@markPrice@1s`
+      ],
+    });
+    stream.current.send(requestSubscribe);
+    console.log('[Stream] Subscribe: ', requestSubscribe);
+  }, [currSymbol]);
+
+  useEffect(() => {
+    handleStream(lastResponse);
+  }, [lastResponse]);
+
+  useEffect(() => {
+    if (isRequireRefreshTrades) {
+      refreshLastTrades(currSymbol);
+      setIsRequireRefreshTrades(false);
+    }
+  }, [isRequireRefreshTrades]);
+
+  useEffect(() => {
+    if (isRequireCalculateLiqPrice) {
+      setState({
+        ...state,
+        liquidationPrice: getLiquidationPrice(Number(futuresPrices?.last?.price))
+      });
+      setIsRequireCalculateLiqPrice(false);
+    }
+  }, [isRequireCalculateLiqPrice]);
 
   return (
     <div className='flex flex-col justify-center h-full'>
@@ -263,51 +354,51 @@ function Main(props: Props) {
           <Divider className='pt-1 mb-2' />
           <SelectSymbol
             onChange={onSymbolChanged}
-            symbols={account?.positions?.map((x: any) => x.symbol).sort()}
+            symbols={futuresAccount?.positions?.map((x: any) => x.symbol).sort()}
           />
           <Divider className='pt-2 mb-1' />
         </header>
         <main className='flex flex-col py-1 space-y-2'>
           <PriceScrenner
-            markPrice={priceMark?.markPrice}
-            lastPrice={priceLast?.price}
-            lastPriceChange={priceLast?.priceChange}
-            lastPriceChangePercent={priceLast?.priceChangePercent}
-            fundingRate={priceMark?.fundingRate}
-            fundingTime={priceMark?.fundingTime}
+            markPrice={futuresPrices?.mark?.markPrice}
+            lastPrice={futuresPrices?.last?.price}
+            lastPriceChange={futuresPrices?.last?.priceChange}
+            lastPriceChangePercent={futuresPrices?.last?.priceChangePercent}
+            fundingRate={futuresPrices?.mark?.fundingRate}
+            fundingTime={futuresPrices?.mark?.fundingTime}
           />
           <LastFee
-            symbol={currentSymbol}
-            time={lastTrade?.time}
-            side={lastTrade?.side}
-            price={lastTrade?.price}
-            totalValue={lastTrade?.totalValue}
-            lastCommission={lastTrade?.commission}
-            realizedPnl={lastTrade?.realizedPnl}
-            marginAsset={lastTrade?.marginAsset}
-            commissionAsset={lastTrade?.marginAsset}
+            symbol={currSymbol}
+            time={futuresLastTrade?.time}
+            side={futuresLastTrade?.side}
+            price={futuresLastTrade?.price}
+            totalValue={futuresLastTrade?.totalValue}
+            lastCommission={futuresLastTrade?.commission}
+            realizedPnl={futuresLastTrade?.realizedPnl}
+            marginAsset={futuresLastTrade?.marginAsset}
+            commissionAsset={futuresLastTrade?.marginAsset}
           />
           <Margin
-            positionSide={expectedPosSide}
+            positionSide={state.expectedPosSide}
             onSwitchLongShort={switchExpectedPosSide}
-            leverage={refCurrentSymbolPos?.leverage}
-            isolated={refCurrentSymbolPos?.isolated}
-            liquidation={liqPrice}
+            leverage={currentPosition?.leverage}
+            isolated={currentPosition?.isolated}
+            liquidation={state.liquidationPrice}
           />
           <Divider className='py-1' />
           <Fee
-            symbol={currentSymbol}
-            value={expectedOpenPosRatio}
-            setValue={setExpectedOpenPosRatio}
-            lastPrice={priceLast?.price}
-            leverage={refCurrentSymbolPos?.leverage}
+            symbol={currSymbol}
+            value={state.expectedPosRatio}
+            setValue={onChangePosRatio}
+            lastPrice={futuresPrices?.last?.price}
+            leverage={currentPosition?.leverage}
             availableBalance={currentAsset?.availableBalance}
           />
         </main>
         <Divider className='py-1' />
         <footer className='pt-4'>
           <Text className='flex justify-center items-center font-bold text-sm text-gray-500'>
-            Powered by <img className='-ml-1' src={BinanceLogo} alt='Binance' />
+            <img src={BinanceLogo} alt='Binance' />
           </Text>
         </footer>
       </div>
@@ -318,15 +409,7 @@ function Main(props: Props) {
           fontSize='xs'
           fontWeight='bold'
         >
-          Node-{Application.versions.node()}, Electron-{Application.versions.electron()}, Chrome-{Application.versions.chrome()}
-        </Text>
-        <Text
-          textColor='gray.600'
-          textAlign='center'
-          fontSize='xs'
-          fontWeight='bold'
-        >
-          Leveraged.App - @dayrain
+          Leveraged - @dayrain
         </Text>
       </div>
     </div>
