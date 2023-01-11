@@ -1,8 +1,10 @@
-import { app, BrowserWindow, shell, session, ipcMain } from 'electron';
+import { app, BrowserWindow, shell, ipcMain } from 'electron';
 import { initRenderer } from 'electron-store';
+import installExtension, { REACT_DEVELOPER_TOOLS } from 'electron-devtools-installer';
 import path from 'path';
 
 let mainWindow: BrowserWindow | null = null;
+
 function createWindow() {
     initRenderer();
     mainWindow = new BrowserWindow({
@@ -61,10 +63,12 @@ app.on('activate', () => {
     }
 });
 
-// debugging
-app.whenReady().then(async () => {
-    const reactDevToolsPath = 'C:/Users/denev/AppData/Local/Google/Chrome/User Data/Default/Extensions/fmkadmapgofadopljbjfkapdkoienihi/4.25.0_0'
-    if (!app.isPackaged) await session.defaultSession.loadExtension(reactDevToolsPath);
+app.whenReady().then(() => {
+    if (!app.isPackaged) {
+        installExtension(REACT_DEVELOPER_TOOLS)
+            .then((name) => console.log(`Added Extension: ${name}`))
+            .catch((err) => console.log('An error occurred: ', err));
+    }
 });
 
 ipcMain.on('setSize', (event, width: number, height: number) => {
