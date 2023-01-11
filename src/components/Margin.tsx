@@ -24,7 +24,7 @@ interface Props {
 
 const Header = (props: TableColumnHeaderProps) => (
   <Th
-    fontSize='md'
+    fontSize='sm'
     fontWeight='normal'
     textColor='gray.400'
     fontFamily='NanumSquare'

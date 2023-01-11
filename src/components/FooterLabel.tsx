@@ -7,9 +7,9 @@ interface Props extends TextProps {
 function FooterLabel(props: Props) {
   return (
     <Text
-      textColor='gray.600' 
-      fontSize='sm' 
-      fontWeight='bold' 
+      textColor='gray.500' 
+      fontSize='xs' 
+      fontWeight='normal' 
       textAlign='end'
       {...props}
     >

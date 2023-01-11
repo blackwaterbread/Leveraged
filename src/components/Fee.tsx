@@ -16,14 +16,14 @@ import {
   Stack,
   Radio,
 } from '@chakra-ui/react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import FooterLabel from './FooterLabel';
 import Stats from './Stats';
 
 const Ratio = [25, 50, 75, 100];
 const Header = (props: TableColumnHeaderProps) => (
   <Th
-    fontSize='md'
+    fontSize='sm'
     fontWeight='normal'
     textColor='gray.400'
     fontFamily='NanumSquare'
@@ -48,26 +48,24 @@ const Cell = (props: TableCellProps) => (
 interface Props {
   symbol?: string,
   value: number,
-  setValue: React.Dispatch<React.SetStateAction<number>>,
+  setValue: (value: number) => void,
   lastPrice?: string,
   leverage?: string,
   availableBalance?: string
 }
 
 function Fee(props: Props) {
-  // const [sliderValue, setSliderValue] = useState(25);
   const [showTooltip, setShowTooltip] = useState(false);
   const [feeLevel, setFeeLevel] = useState<string>('maker');
-  const [fee, setFee] = useState(0);
   const fSymbol = props.symbol?.replace('USDT', '').replace('BUSD', '');
   const leverage = Number(props.leverage);
   const lastPrice = Number(props.lastPrice);
   const availableBalance = Number(props.availableBalance);
+  const feeRate = feeLevel === 'taker' ? 0.0004 : 0.0002;
   const getSize = (x: number) => availableBalance * (x / 100) / lastPrice * leverage;
   const getFee = (ratio: number, size: number) => ((ratio / 100) * size * feeRate) * 2;
   const stableSize = leverage * availableBalance;
   const cryptoSize = getSize(props.value);
-  const feeRate = feeLevel === 'taker' ? 0.0004 : 0.0002;
 
   const onChange = (value: number) => {
     props.setValue(value);
@@ -82,9 +80,7 @@ function Fee(props: Props) {
   const setVisibleTooltip = () => { setShowTooltip(true) }
   const setHiddenTooltip = () => { setShowTooltip(false) }
 
-  useEffect(() => {
-    setFee(getFee(props.value, leverage * availableBalance));
-  }, [availableBalance, leverage, feeLevel]);
+  const fee =  availableBalance * leverage * props.value / 100 * feeRate * 2;
 
   return (
     <div>
@@ -167,8 +163,15 @@ function Fee(props: Props) {
           <SliderThumb />
         </Slider>
         <div className='flex justify-between pt-5'>
-          <Stats title='예상 사이즈' value={`${isNaN(cryptoSize) ? '-' : cryptoSize.toFixed(4)} ${fSymbol ?? ''}`} />
-          <Stats title='예상 수수료' value={`${isNaN(fee) ? '-' : fee.toFixed(3)} USDT`} />
+          <Stats 
+            title='예상 사이즈' 
+            value={`${isNaN(cryptoSize) ? '-' : cryptoSize.toFixed(4)} ${fSymbol ?? ''}`} 
+          />
+          <Stats 
+            title='예상 수수료' 
+            titleProps={{ textAlign: 'right' }} 
+            value={`${isNaN(fee) ? '-' : fee.toFixed(3)} USDT`} 
+          />
         </div>
       </div>
       <FooterLabel label='포지션 오픈/청산까지의 수수료 합계' />

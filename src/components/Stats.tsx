@@ -12,7 +12,7 @@ function Stats(props: Props) {
   return (
     <div className={props.className}>
       <Text
-        fontSize='md'
+        fontSize='sm'
         fontWeight='normal'
         textColor='gray.400'
         {...props.titleProps}

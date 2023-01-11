@@ -38,7 +38,7 @@ function PriceScrenner(props: ScreenerProp) {
       <div className='flex space-x-6 justify-start'>
         <div>
           {/* 여기 Stats Component로 정리하면 Tooltip이 안나오길래 일단 걍 냅둠. */}
-          <Text fontSize='md' fontWeight='normal' textColor='gray.400'>
+          <Text fontSize='sm' fontWeight='normal' textColor='gray.400'>
             현재가
           </Text>
           <Tooltip
