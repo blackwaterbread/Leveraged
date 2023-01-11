@@ -10,10 +10,10 @@ class StoreModel<T extends string | number | object> {
     public clear() { Store.delete(this.key); }
 }
 
-interface IAuthentication {
+interface IStoreAuthentication {
     apiKey: string,
     apiSecret: string
 }
 
-const authStoreKey = Application.isDevelopment() ? 'authenticationDev' : 'authentication';
-export const AuthenticationStore = new StoreModel<IAuthentication>(authStoreKey);
+export const STORE_KEY_AUTHENTICATION = Application.isDevelopment() ? 'authenticationDev' : 'authentication';
+export const AuthenticationStore = new StoreModel<IStoreAuthentication>(STORE_KEY_AUTHENTICATION);
