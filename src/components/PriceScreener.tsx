@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Text, Tooltip } from '@chakra-ui/react';
-import { getFixedNumber, getFloatFixed } from '../lib/calculation';
+import { getFixedNumber } from '../lib/calculation';
 import { Colors } from '../lib/theme';
 import { usePrevious } from 'lib/hooks';
 import { DateTime } from 'luxon';
@@ -22,7 +22,6 @@ function PriceScrenner(props: ScreenerProp) {
   const [colorPrice, setColorPrice] = useState('');
   const prefix = Math.sign(Number(props.lastPriceChangePercent)) === 1 ? '+' : '';
   const colorChange = Math.sign(Number(props.lastPriceChangePercent)) === 1 ? Colors.bull : Colors.bear;
-  const fixed = getFloatFixed(lastPrice);
   const change = Number(props.lastPriceChange);
   const changePercent = Number(props.lastPriceChangePercent);
   const fundingRate = props.fundingRate ? `${(Number(props.fundingRate) * 100)?.toFixed(4)}%` : '-';

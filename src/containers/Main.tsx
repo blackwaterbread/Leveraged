@@ -52,23 +52,23 @@ function Main(props: Props) {
   const stream = useRef<WebSocket>();
   const binance = useRef<BinanceClass>();
 
-  const [currSymbol, setCurrSymbol] = useState<string>('');
-  const [lastResponse, setLastResponse] = useState<any>();
-  const [isRequireRefreshTrades, setIsRequireRefreshTrades] = useState(false);
-  const [isRequireCalculateLiqPrice, setIsRequireCalculateLiqPrice] = useState(false);
+  const [stateCurrSymbol, setStateCurrSymbol] = useState<string>('');
+  const [stateIsRequireRefreshTrades, setStateIsRequireRefreshTrades] = useState(false);
+  const [stateIsRequireCalculateLiqPrice, setStateIsRequireCalculateLiqPrice] = useState(false);
 
-  const [futuresAccount, setFuturesAccount] = useState<IBinanceFuturesAccount>();
-  const [futuresPrices, setFuturesPrices] = useState<IStateFuturesPrices>();
-  const [futuresLastTrade, setFuturesLastTrade] = useState<IStateLastTrade>();
-  const [state, setState] = useState<IState>({
+  const [stateFuturesAccount, setStateFuturesAccount] = useState<IBinanceFuturesAccount>();
+  const [stateFuturesPrices, setStateFuturesPrices] = useState<IStateFuturesPrices>();
+  const [stateFuturesLastTrade, setStateFuturesLastTrade] = useState<IStateLastTrade>();
+
+  const [stateInternal, setStateInternal] = useState<IState>({
     expectedPosSide: 'BUY',
     expectedPosRatio: 25,
     liquidationPrice: 0,
   });
 
-  const prevSymbol = usePrevious(currSymbol);
-  const currentPosition = futuresAccount?.positions?.find((x: any) => x.symbol === currSymbol);
-  const currentAsset = futuresAccount?.assets.find(x => x.asset === currSymbol?.slice(-4));
+  const prevSymbol = usePrevious(stateCurrSymbol);
+  const currentPosition = stateFuturesAccount?.positions?.find((x: any) => x.symbol === stateCurrSymbol);
+  const currentAsset = stateFuturesAccount?.assets.find(x => x.asset === stateCurrSymbol?.slice(-4));
 
   const initalizeComponent = async () => {
     Application.setSize(425, 900);
@@ -83,7 +83,7 @@ function Main(props: Props) {
         stream.current = new WebSocket(`${URL_WSS}${streamKey}`);
         stream.current.onopen = () => { console.log('[Stream] Successfully Connected'); }
         stream.current.onmessage = onStreamUpdate;
-        setFuturesAccount(account);
+        setStateFuturesAccount(account);
       }
     }
   }
@@ -97,8 +97,8 @@ function Main(props: Props) {
       binance.current.futuresMarkPrice(symbol)
     ]);
     const lastPrice = prices[symbol];
-    setFuturesAccount(account);
-    setFuturesPrices({
+    setStateFuturesAccount(account);
+    setStateFuturesPrices({
       last: {
         price: lastPrice,
         priceChange: '0',
@@ -113,7 +113,7 @@ function Main(props: Props) {
         fundingTime: mPrices.nextFundingTime
       }
     });
-    setState({ ...state, liquidationPrice: getLiquidationPrice(Number(lastPrice)) });
+    setStateInternal({ ...stateInternal, liquidationPrice: getLiquidationPrice(Number(lastPrice)) });
   }
 
   const refreshLastTrades = async (symbol: string) => {
@@ -128,7 +128,7 @@ function Main(props: Props) {
         const commission = sum(sameOrders.map(x => x.commission));
         const realizedPnl = sum(sameOrders.map(x => x.realizedPnl));
         const totalValue = sum(sameOrders.map(x => x.qty));
-        setFuturesLastTrade({
+        setStateFuturesLastTrade({
           side: lastOrder.side,
           totalValue: totalValue,
           price: Number(lastOrder.price),
@@ -141,7 +141,7 @@ function Main(props: Props) {
       }
     }
     else {
-      setFuturesLastTrade({
+      setStateFuturesLastTrade({
         side: undefined,
         totalValue: 0,
         price: 0,
@@ -155,15 +155,15 @@ function Main(props: Props) {
   }
 
   const switchExpectedPosSide = () => {
-    setState({
-      ...state,
-      expectedPosSide: state.expectedPosSide === 'BUY' ? 'SELL' : 'BUY'
+    setStateInternal({
+      ...stateInternal,
+      expectedPosSide: stateInternal.expectedPosSide === 'BUY' ? 'SELL' : 'BUY'
     });
-    setIsRequireCalculateLiqPrice(true);
+    setStateIsRequireCalculateLiqPrice(true);
   }
 
   const getLiquidationPrice = (entryPrice?: number) => {
-    if (state.expectedPosRatio === 0) {
+    if (stateInternal.expectedPosRatio === 0) {
       return 0;
     }
     else if (currentPosition && !currentPosition.isolated) {
@@ -172,14 +172,14 @@ function Main(props: Props) {
     else if (currentAsset && currentPosition && entryPrice) {
       const availableBalance = Number(currentAsset?.availableBalance);
       const leverage = Number(currentPosition.leverage);
-      const initalMargin = availableBalance * (state.expectedPosRatio / 100);
+      const initalMargin = availableBalance * (stateInternal.expectedPosRatio / 100);
       const size = initalMargin * leverage / entryPrice;
-      const liquidationPrice = calculateLiquidationPrice(currSymbol,
+      const liquidationPrice = calculateLiquidationPrice(stateCurrSymbol,
         {
           // in isolated mode, wb = margin.
           walletBalance: initalMargin,
           positionSize: size,
-          positionSide: state.expectedPosSide,
+          positionSide: stateInternal.expectedPosSide,
           leverage: leverage,
           entryPrice: entryPrice
         }
@@ -191,18 +191,25 @@ function Main(props: Props) {
     }
   }
 
-  const handleStream = (response: any) => {
-    if (!futuresAccount) return;
-    const positions = [...futuresAccount.positions];
+  const onLogout = () => {
+    AuthenticationStore.clear();
+    props.onLogout();
+  }
+
+  const onStreamUpdate = async (message: MessageEvent) => {
+    if (!stateFuturesAccount) return;
+    const response = JSON.parse(message.data);
+    console.log(response);
+    const positions = [...stateFuturesAccount.positions];
     switch (response.e) {
       case 'ACCOUNT_CONFIG_UPDATE':
         const current = positions.findIndex(v => v.symbol === response.ac.s);
         positions[current].leverage = response.ac.l;
-        setFuturesAccount({
-          ...futuresAccount,
+        setStateFuturesAccount({
+          ...stateFuturesAccount,
           positions: positions
         });
-        setIsRequireCalculateLiqPrice(true);
+        setStateIsRequireCalculateLiqPrice(true);
         break;
       case 'ACCOUNT_UPDATE':
         if (response.a.P.length > 0) {
@@ -210,17 +217,17 @@ function Main(props: Props) {
           const p = positions.findIndex(v => v.symbol === account.s);
           positions[p].isolated = account.mt === 'isolated';
         }
-        const tAssets = futuresAccount.assets;
-        tAssets[futuresAccount.assets.findIndex(x => x.asset === response.a.B[0].a)].availableBalance = response.a.B[0].cw;
-        setIsRequireRefreshTrades(true);
-        setFuturesAccount({
-          ...futuresAccount,
+        const tAssets = stateFuturesAccount.assets;
+        tAssets[stateFuturesAccount.assets.findIndex(x => x.asset === response.a.B[0].a)].availableBalance = response.a.B[0].cw;
+        setStateFuturesAccount({
+          ...stateFuturesAccount,
           assets: tAssets,
         });
+        setStateIsRequireRefreshTrades(true);
         break;
       case 'markPriceUpdate':
-        setFuturesPrices({
-          ...futuresPrices,
+        setStateFuturesPrices({
+          ...stateFuturesPrices,
           mark: {
             symbol: response.s,
             eventTime: response.E,
@@ -232,9 +239,9 @@ function Main(props: Props) {
         });
         break;
       case '24hrTicker':
-        setIsRequireCalculateLiqPrice(true);
-        setFuturesPrices({
-          ...futuresPrices,
+        setStateIsRequireCalculateLiqPrice(true);
+        setStateFuturesPrices({
+          ...stateFuturesPrices,
           last: {
             price: response.c,
             priceChange: response.p,
@@ -245,26 +252,15 @@ function Main(props: Props) {
     }
   }
 
-  const onLogout = () => {
-    AuthenticationStore.clear();
-    props.onLogout();
-  }
-
-  const onStreamUpdate = async (message: MessageEvent) => {
-    const response = JSON.parse(message.data);
-    console.log(response);
-    setLastResponse(response);
-  }
-
   const onSymbolChanged: React.ChangeEventHandler<HTMLSelectElement> = (e) => {
     if (!binance.current) return;
     const symbol = e.target.value;
-    setCurrSymbol(symbol);
+    setStateCurrSymbol(symbol);
   }
 
   const onChangePosRatio = (value: number) => {
-    setState({
-      ...state,
+    setStateInternal({
+      ...stateInternal,
       expectedPosRatio: value
     });
   }
@@ -287,41 +283,43 @@ function Main(props: Props) {
       console.log('[Stream] Unsubscribe: ', requestUnsubscribe);
     }
 
-    refreshSymbolMarket(currSymbol);
-    refreshLastTrades(currSymbol);
-    // setIsRequireRefreshTrades(true);
+    refreshSymbolMarket(stateCurrSymbol);
+    refreshLastTrades(stateCurrSymbol);
 
     const requestSubscribe = JSON.stringify({
       method: 'SUBSCRIBE',
       params: [
-        `${currSymbol.toLowerCase()}@ticker`,
-        `${currSymbol.toLowerCase()}@markPrice@1s`
+        `${stateCurrSymbol.toLowerCase()}@ticker`,
+        `${stateCurrSymbol.toLowerCase()}@markPrice@1s`
       ],
     });
     stream.current.send(requestSubscribe);
     console.log('[Stream] Subscribe: ', requestSubscribe);
-  }, [currSymbol]);
+  }, [stateCurrSymbol]);
 
   useEffect(() => {
-    handleStream(lastResponse);
-  }, [lastResponse]);
-
-  useEffect(() => {
-    if (isRequireRefreshTrades) {
-      refreshLastTrades(currSymbol);
-      setIsRequireRefreshTrades(false);
+    // replace handler if changed account state (don't know this is best)
+    if (stream.current) {
+      stream.current.onmessage = onStreamUpdate;
     }
-  }, [isRequireRefreshTrades]);
+  }, [stateFuturesAccount]);
 
   useEffect(() => {
-    if (isRequireCalculateLiqPrice) {
-      setState({
-        ...state,
-        liquidationPrice: getLiquidationPrice(Number(futuresPrices?.last?.price))
+    if (stateIsRequireRefreshTrades) {
+      refreshLastTrades(stateCurrSymbol);
+      setStateIsRequireRefreshTrades(false);
+    }
+  }, [stateIsRequireRefreshTrades]);
+
+  useEffect(() => {
+    if (stateIsRequireCalculateLiqPrice) {
+      setStateInternal({
+        ...stateInternal,
+        liquidationPrice: getLiquidationPrice(Number(stateFuturesPrices?.last?.price))
       });
-      setIsRequireCalculateLiqPrice(false);
+      setStateIsRequireCalculateLiqPrice(false);
     }
-  }, [isRequireCalculateLiqPrice]);
+  }, [stateIsRequireCalculateLiqPrice]);
 
   return (
     <div className='flex flex-col justify-center h-full'>
@@ -354,43 +352,43 @@ function Main(props: Props) {
           <Divider className='pt-1 mb-2' />
           <SelectSymbol
             onChange={onSymbolChanged}
-            symbols={futuresAccount?.positions?.map((x: any) => x.symbol).sort()}
+            symbols={stateFuturesAccount?.positions?.map((x: any) => x.symbol).sort()}
           />
           <Divider className='pt-2 mb-1' />
         </header>
         <main className='flex flex-col py-1 space-y-2'>
           <PriceScrenner
-            markPrice={futuresPrices?.mark?.markPrice}
-            lastPrice={futuresPrices?.last?.price}
-            lastPriceChange={futuresPrices?.last?.priceChange}
-            lastPriceChangePercent={futuresPrices?.last?.priceChangePercent}
-            fundingRate={futuresPrices?.mark?.fundingRate}
-            fundingTime={futuresPrices?.mark?.fundingTime}
+            markPrice={stateFuturesPrices?.mark?.markPrice}
+            lastPrice={stateFuturesPrices?.last?.price}
+            lastPriceChange={stateFuturesPrices?.last?.priceChange}
+            lastPriceChangePercent={stateFuturesPrices?.last?.priceChangePercent}
+            fundingRate={stateFuturesPrices?.mark?.fundingRate}
+            fundingTime={stateFuturesPrices?.mark?.fundingTime}
           />
           <LastFee
-            symbol={currSymbol}
-            time={futuresLastTrade?.time}
-            side={futuresLastTrade?.side}
-            price={futuresLastTrade?.price}
-            totalValue={futuresLastTrade?.totalValue}
-            lastCommission={futuresLastTrade?.commission}
-            realizedPnl={futuresLastTrade?.realizedPnl}
-            marginAsset={futuresLastTrade?.marginAsset}
-            commissionAsset={futuresLastTrade?.marginAsset}
+            symbol={stateCurrSymbol}
+            time={stateFuturesLastTrade?.time}
+            side={stateFuturesLastTrade?.side}
+            price={stateFuturesLastTrade?.price}
+            totalValue={stateFuturesLastTrade?.totalValue}
+            lastCommission={stateFuturesLastTrade?.commission}
+            realizedPnl={stateFuturesLastTrade?.realizedPnl}
+            marginAsset={stateFuturesLastTrade?.marginAsset}
+            commissionAsset={stateFuturesLastTrade?.marginAsset}
           />
           <Margin
-            positionSide={state.expectedPosSide}
+            positionSide={stateInternal.expectedPosSide}
             onSwitchLongShort={switchExpectedPosSide}
             leverage={currentPosition?.leverage}
             isolated={currentPosition?.isolated}
-            liquidation={state.liquidationPrice}
+            liquidation={stateInternal.liquidationPrice}
           />
           <Divider className='py-1' />
           <Fee
-            symbol={currSymbol}
-            value={state.expectedPosRatio}
+            symbol={stateCurrSymbol}
+            value={stateInternal.expectedPosRatio}
             setValue={onChangePosRatio}
-            lastPrice={futuresPrices?.last?.price}
+            lastPrice={stateFuturesPrices?.last?.price}
             leverage={currentPosition?.leverage}
             availableBalance={currentAsset?.availableBalance}
           />

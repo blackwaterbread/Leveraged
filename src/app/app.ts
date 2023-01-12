@@ -64,6 +64,9 @@ app.on('activate', () => {
 });
 
 app.whenReady().then(() => {
+    // 2023. 01. 12 electron bug: cannot loading react-devtools 4.27
+    // solution: https://polypane.app/docs/downgrading-react-devtools/
+    // replace app extension to older version (4.25)
     if (!app.isPackaged) {
         installExtension(REACT_DEVELOPER_TOOLS)
             .then((name) => console.log(`Added Extension: ${name}`))

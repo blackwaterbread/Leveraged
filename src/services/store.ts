@@ -10,7 +10,7 @@ class StoreModel<T extends string | number | object> {
     public clear() { Store.delete(this.key); }
 }
 
-interface IStoreAuthentication {
+export interface IStoreAuthentication {
     apiKey: string,
     apiSecret: string
 }
