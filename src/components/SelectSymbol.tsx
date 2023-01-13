@@ -23,7 +23,6 @@ function SelectSymbol(props: Props) {
       value={props.value}
     >
       {props.symbols?.map((v, i) => {
-        // return <option key={`${nanoid()}`} value={v}>{v}</option>
         return <option key={`symbol_${i}`} value={v}>{v}</option>
       })}
     </Select>

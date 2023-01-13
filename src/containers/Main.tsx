@@ -212,6 +212,7 @@ function Main(props: Props) {
 
   const onLogout = () => {
     AuthenticationStore.clear();
+    stream.current?.close();
     props.onLogout();
   }
 
