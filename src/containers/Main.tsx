@@ -7,11 +7,12 @@ import Margin from '../components/Margin';
 import PriceScrenner from '../components/PriceScreener';
 import SelectSymbol from '../components/SelectSymbol';
 import Wallet from '../components/Wallet';
-import LastFee from 'components/LastFee';
+import LastTrade from 'components/LastTrade';
 import BinanceLogo from '../assets/logos/Binance.svg';
 import BinanceClass from 'node-binance-api';
 import { IoSettings, IoInformationCircle, IoExitOutline } from 'react-icons/io5';
-import { AuthenticationStore } from 'services/store';
+import { AuthenticationStore, ApplicationConfigsStore, IStoreApplicationConfigs } from 'services/store';
+import Recently from 'components/Recently';
 const { Application, Binance } = window;
 const URL_WSS = Application.isDevelopment() ? 'wss://stream.binancefuture.com/ws/' : 'wss://fstream.binance.com/ws/';
 
@@ -37,11 +38,6 @@ interface IStateLastTrade {
   commissionAsset: string
 }
 
-interface IStateFuturesPrices {
-  last?: IStateLastPrice,
-  mark?: IBinanceMarkPrice
-}
-
 interface IState {
   expectedPosSide: TypePositionSide,
   expectedPosRatio: number,
@@ -57,9 +53,13 @@ function Main(props: Props) {
   const [stateIsRequireCalculateLiqPrice, setStateIsRequireCalculateLiqPrice] = useState(false);
 
   const [stateFuturesAccount, setStateFuturesAccount] = useState<IBinanceFuturesAccount>();
-  const [stateFuturesPrices, setStateFuturesPrices] = useState<IStateFuturesPrices>();
+  const [stateFuturesLastPrices, setStateFuturesLastPrices] = useState<IStateLastPrice>();
+  const [stateFuturesMarkPrices, setStateFuturesMarkPrices] = useState<IBinanceMarkPrice>();
   const [stateFuturesLastTrade, setStateFuturesLastTrade] = useState<IStateLastTrade>();
 
+  const [stateAppConfigs, setStateAppConfigs] = useState<IStoreApplicationConfigs>({
+    recentlyPairs: []
+  });
   const [stateInternal, setStateInternal] = useState<IState>({
     expectedPosSide: 'BUY',
     expectedPosRatio: 25,
@@ -71,7 +71,7 @@ function Main(props: Props) {
   const currentAsset = stateFuturesAccount?.assets.find(x => x.asset === stateCurrSymbol?.slice(-4));
 
   const initalizeComponent = async () => {
-    Application.setSize(425, 900);
+    Application.setSize(425, 985);
     Application.setResizable(true);
     if (props.authentication) {
       const { apiKey, apiSecret } = props.authentication;
@@ -84,6 +84,10 @@ function Main(props: Props) {
         stream.current.onopen = () => { console.log('[Stream] Successfully Connected'); }
         stream.current.onmessage = onStreamUpdate;
         setStateFuturesAccount(account);
+      }
+      const appConfigs = ApplicationConfigsStore.get();
+      if (appConfigs) {
+        setStateAppConfigs(appConfigs);
       }
     }
   }
@@ -98,22 +102,20 @@ function Main(props: Props) {
     ]);
     const lastPrice = prices[symbol];
     setStateFuturesAccount(account);
-    setStateFuturesPrices({
-      last: {
-        price: lastPrice,
-        priceChange: '0',
-        priceChangePercent: '0'
-      },
-      mark: {
-        symbol: symbol,
-        markPrice: mPrices.markPrice,
-        eventTime: mPrices.time,
-        eventType: '',
-        fundingRate: mPrices.lastFundingRate,
-        fundingTime: mPrices.nextFundingTime
-      }
+    setStateFuturesLastPrices({
+      price: lastPrice,
+      priceChange: '0',
+      priceChangePercent: '0'
     });
-    setStateInternal({ ...stateInternal, liquidationPrice: getLiquidationPrice(Number(lastPrice)) });
+    setStateFuturesMarkPrices({
+      symbol: symbol,
+      markPrice: mPrices.markPrice,
+      eventTime: mPrices.time,
+      eventType: '',
+      fundingRate: mPrices.lastFundingRate,
+      fundingTime: mPrices.nextFundingTime
+    });
+    setStateInternal({ ...stateInternal, liquidationPrice: getLiquidationPrice(Number(stateFuturesLastPrices?.price)) });
   }
 
   const refreshLastTrades = async (symbol: string) => {
@@ -191,6 +193,23 @@ function Main(props: Props) {
     }
   }
 
+  const onDeleteRecently = (pair: string) => {
+    const target = stateAppConfigs.recentlyPairs.filter(value => value !== pair);
+    if (target) {
+      setStateAppConfigs({
+        ...stateAppConfigs,
+        recentlyPairs: target
+      });
+      ApplicationConfigsStore.set({
+        ...stateAppConfigs,
+        recentlyPairs: target
+      });
+    }
+    else {
+      return;
+    }
+  }
+
   const onLogout = () => {
     AuthenticationStore.clear();
     props.onLogout();
@@ -226,36 +245,24 @@ function Main(props: Props) {
         setStateIsRequireRefreshTrades(true);
         break;
       case 'markPriceUpdate':
-        setStateFuturesPrices({
-          ...stateFuturesPrices,
-          mark: {
-            symbol: response.s,
-            eventTime: response.E,
-            markPrice: response.p,
-            eventType: response.e,
-            fundingRate: response.r,
-            fundingTime: response.T
-          }
+        setStateFuturesMarkPrices({
+          symbol: response.s,
+          eventTime: response.E,
+          markPrice: response.p,
+          eventType: response.e,
+          fundingRate: response.r,
+          fundingTime: response.T
         });
         break;
       case '24hrTicker':
         setStateIsRequireCalculateLiqPrice(true);
-        setStateFuturesPrices({
-          ...stateFuturesPrices,
-          last: {
-            price: response.c,
-            priceChange: response.p,
-            priceChangePercent: response.P
-          }
+        setStateFuturesLastPrices({
+          price: response.c,
+          priceChange: response.p,
+          priceChangePercent: response.P
         });
         break;
     }
-  }
-
-  const onSymbolChanged: React.ChangeEventHandler<HTMLSelectElement> = (e) => {
-    if (!binance.current) return;
-    const symbol = e.target.value;
-    setStateCurrSymbol(symbol);
   }
 
   const onChangePosRatio = (value: number) => {
@@ -271,6 +278,7 @@ function Main(props: Props) {
 
   useEffect(() => {
     if (!stream.current) return;
+    if (stateCurrSymbol === '') return;
     if (prevSymbol) {
       const requestUnsubscribe = JSON.stringify({
         method: 'UNSUBSCRIBE',
@@ -295,10 +303,24 @@ function Main(props: Props) {
     });
     stream.current.send(requestSubscribe);
     console.log('[Stream] Subscribe: ', requestSubscribe);
+
+    if (stateAppConfigs.recentlyPairs.includes(stateCurrSymbol)) {
+      return;
+    }
+    else {
+      const recentlyPairs = [stateCurrSymbol, ...stateAppConfigs.recentlyPairs.slice(0, 2)];
+      setStateAppConfigs({
+        ...stateAppConfigs,
+        recentlyPairs: recentlyPairs
+      });
+      ApplicationConfigsStore.set({ 
+        recentlyPairs: recentlyPairs
+      });
+    }
   }, [stateCurrSymbol]);
 
   useEffect(() => {
-    // replace handler if changed account state (don't know this is best)
+    // replace handler if changed account state (no idea this is best way)
     if (stream.current) {
       stream.current.onmessage = onStreamUpdate;
     }
@@ -315,7 +337,7 @@ function Main(props: Props) {
     if (stateIsRequireCalculateLiqPrice) {
       setStateInternal({
         ...stateInternal,
-        liquidationPrice: getLiquidationPrice(Number(stateFuturesPrices?.last?.price))
+        liquidationPrice: getLiquidationPrice(Number(stateFuturesLastPrices?.price))
       });
       setStateIsRequireCalculateLiqPrice(false);
     }
@@ -351,21 +373,28 @@ function Main(props: Props) {
           <Wallet asset={currentAsset?.asset} availableBalance={currentAsset?.availableBalance} />
           <Divider className='pt-1 mb-2' />
           <SelectSymbol
-            onChange={onSymbolChanged}
+            value={stateCurrSymbol}
+            onChangeSymbol={setStateCurrSymbol}
             symbols={stateFuturesAccount?.positions?.map((x: any) => x.symbol).sort()}
+          />
+          <Recently 
+            pairs={stateAppConfigs.recentlyPairs} 
+            onChangeSymbol={setStateCurrSymbol}
+            onDeleteRecently={onDeleteRecently}
           />
           <Divider className='pt-2 mb-1' />
         </header>
         <main className='flex flex-col py-1 space-y-2'>
           <PriceScrenner
-            markPrice={stateFuturesPrices?.mark?.markPrice}
-            lastPrice={stateFuturesPrices?.last?.price}
-            lastPriceChange={stateFuturesPrices?.last?.priceChange}
-            lastPriceChangePercent={stateFuturesPrices?.last?.priceChangePercent}
-            fundingRate={stateFuturesPrices?.mark?.fundingRate}
-            fundingTime={stateFuturesPrices?.mark?.fundingTime}
+            markPrice={stateFuturesMarkPrices?.markPrice}
+            lastPrice={stateFuturesLastPrices?.price}
+            lastPriceChange={stateFuturesLastPrices?.priceChange}
+            lastPriceChangePercent={stateFuturesLastPrices?.priceChangePercent}
+            fundingRate={stateFuturesMarkPrices?.fundingRate}
+            fundingTime={stateFuturesMarkPrices?.fundingTime}
           />
-          <LastFee
+          <Divider />
+          <LastTrade
             symbol={stateCurrSymbol}
             time={stateFuturesLastTrade?.time}
             side={stateFuturesLastTrade?.side}
@@ -376,6 +405,7 @@ function Main(props: Props) {
             marginAsset={stateFuturesLastTrade?.marginAsset}
             commissionAsset={stateFuturesLastTrade?.marginAsset}
           />
+          <Divider />
           <Margin
             positionSide={stateInternal.expectedPosSide}
             onSwitchLongShort={switchExpectedPosSide}
@@ -383,12 +413,12 @@ function Main(props: Props) {
             isolated={currentPosition?.isolated}
             liquidation={stateInternal.liquidationPrice}
           />
-          <Divider className='py-1' />
+          <Divider />
           <Fee
             symbol={stateCurrSymbol}
             value={stateInternal.expectedPosRatio}
             setValue={onChangePosRatio}
-            lastPrice={stateFuturesPrices?.last?.price}
+            lastPrice={stateFuturesLastPrices?.price}
             leverage={currentPosition?.leverage}
             availableBalance={currentAsset?.availableBalance}
           />

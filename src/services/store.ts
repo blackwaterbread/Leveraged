@@ -15,5 +15,11 @@ export interface IStoreAuthentication {
     apiSecret: string
 }
 
+export interface IStoreApplicationConfigs {
+    recentlyPairs: string[]
+}
+
 export const STORE_KEY_AUTHENTICATION = Application.isDevelopment() ? 'authenticationDev' : 'authentication';
+export const STORE_KEY_APPLICATION_CONFIGS = Application.isDevelopment() ? 'appConfigsDev' : 'appConfigs';
 export const AuthenticationStore = new StoreModel<IStoreAuthentication>(STORE_KEY_AUTHENTICATION);
+export const ApplicationConfigsStore = new StoreModel<IStoreApplicationConfigs>(STORE_KEY_APPLICATION_CONFIGS);

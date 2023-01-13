@@ -12,7 +12,8 @@ export const Colors = {
     text: '#d1d5db',
     bull: '#68D391',
     bear: '#F56565',
-    funding: '#DD6B20'
+    funding: '#DD6B20',
+    binance: '#F3BA2F',
 }
 
 const theme = extendTheme({ config });

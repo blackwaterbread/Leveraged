@@ -1,10 +1,43 @@
 import { useEffect, useState } from 'react';
-import { Text, Tooltip } from '@chakra-ui/react';
+import {
+  Stat,
+  StatLabel,
+  StatNumber,
+  StatArrow,
+  StatGroup,
+  StatLabelProps,
+  StatNumberProps
+} from '@chakra-ui/react';
 import { getFixedNumber } from '../lib/calculation';
 import { Colors } from '../lib/theme';
 import { usePrevious } from 'lib/hooks';
 import { DateTime } from 'luxon';
 import Stats from './Stats';
+
+const Header = (props: StatLabelProps) => (
+  <StatLabel
+    fontSize='sm'
+    fontWeight='normal'
+    textColor='gray.400'
+    fontFamily='NanumSquare'
+    borderColor='#1E2329'
+    paddingX={0}
+    {...props}
+  />
+);
+
+const Value = (props: StatNumberProps) => (
+  <StatNumber
+    fontSize='sm'
+    fontWeight='bold'
+    textColor='white'
+    fontFamily='NanumSquare'
+    borderColor='#1E2329'
+    paddingX={0}
+    paddingY={0}
+    {...props}
+  />
+);
 
 interface ScreenerProp {
   markPrice?: string,
@@ -20,10 +53,10 @@ function PriceScrenner(props: ScreenerProp) {
   const markPrice = Number(props.markPrice);
   const prevLastPrice = usePrevious(lastPrice);
   const [colorPrice, setColorPrice] = useState('');
-  const prefix = Math.sign(Number(props.lastPriceChangePercent)) === 1 ? '+' : '';
+  const priceArrow = Math.sign(Number(props.lastPriceChangePercent)) === 1 ? <StatArrow type='increase' /> : <StatArrow type='decrease' />;
   const colorChange = Math.sign(Number(props.lastPriceChangePercent)) === 1 ? Colors.bull : Colors.bear;
-  const change = Number(props.lastPriceChange);
-  const changePercent = Number(props.lastPriceChangePercent);
+  const change = getFixedNumber(Number(props.lastPriceChange));
+  const changePercent = getFixedNumber(Number(props.lastPriceChangePercent), 2);
   const fundingRate = props.fundingRate ? `${(Number(props.fundingRate) * 100)?.toFixed(4)}%` : '-';
   const fundingTime = props.fundingTime ? DateTime.fromMillis(props.fundingTime).diffNow().toFormat('hh:mm:ss') : '-';
   useEffect(() => {
@@ -34,40 +67,35 @@ function PriceScrenner(props: ScreenerProp) {
   }, [props.lastPrice, prevLastPrice, lastPrice]);
   return (
     <div className='space-y-2'>
-      <div className='flex space-x-6 justify-start'>
-        <div>
-          {/* 여기 Stats Component로 정리하면 Tooltip이 안나오길래 일단 걍 냅둠. */}
-          <Text fontSize='sm' fontWeight='normal' textColor='gray.400'>
-            현재가
-          </Text>
-          <Tooltip
-            hasArrow
-            padding={2}
-            bgColor='gray.700'
-            placement='bottom-start'
-            textColor={colorChange}
-            label={props.lastPriceChange ? `전일대비 (${prefix}${getFixedNumber(change, 2)}, ${prefix}${getFixedNumber(changePercent, 2)}%)` : ''}
-            fontWeight='bold'
-          >
-            <Text fontSize='sm' fontWeight='bold' textColor={colorPrice}>
-              {props.lastPrice ? getFixedNumber(lastPrice) : '-'}
-            </Text>
-          </Tooltip>
-        </div>
-        <Stats
-          title='시장평균가'
-          value={props.markPrice ? getFixedNumber(markPrice) : '-'}
-        />
-        <Stats
-          title='펀딩비'
-          value={fundingRate}
-          valueProps={{ textColor: Colors.funding }}
-        />
-        <Stats
-          title='카운트다운'
-          value={fundingTime}
-        />
-      </div>
+      <Stats
+        className='flex space-x-2 justify-start items-center'
+        title='현재가'
+        titleProps={{ fontSize: 'sm' }}
+        value={props.lastPrice ? getFixedNumber(lastPrice) : '-'}
+        valueProps={{ fontSize: '2xl', textColor: colorPrice }}
+      />
+      <StatGroup>
+        <Stat>
+          <Header>시장 평균</Header>
+          <Value>{props.markPrice ? getFixedNumber(markPrice) : '-'}</Value>
+        </Stat>
+        <Stat>
+          <Header>전일 대비</Header>
+          <Value textColor={colorChange}>
+            {change} ({changePercent}%) {priceArrow}
+          </Value>
+        </Stat>
+      </StatGroup>
+      <StatGroup>
+        <Stat>
+          <Header>펀딩 비율</Header>
+          <Value textColor={Colors.funding}>{fundingRate}</Value>
+        </Stat>
+        <Stat>
+          <Header>카운트다운</Header>
+          <Value>{fundingTime}</Value>
+        </Stat>
+      </StatGroup>
     </div>
   )
 }

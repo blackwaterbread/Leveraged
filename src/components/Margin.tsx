@@ -1,18 +1,13 @@
 import {
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  TableColumnHeaderProps,
-  TableCellProps,
-  Tooltip,
-  Text,
-  Button,
+  Stat,
+  StatLabel,
+  StatNumber,
+  StatArrow,
+  StatGroup,
+  StatLabelProps,
+  StatNumberProps,
 } from '@chakra-ui/react';
-import { Colors } from 'lib/theme';
-import { FcBearish, FcBullish } from "react-icons/fc";
+import { judgeLeverage } from 'lib/calculation';
 
 interface Props {
   positionSide: TypePositionSide,
@@ -22,8 +17,8 @@ interface Props {
   liquidation?: number
 }
 
-const Header = (props: TableColumnHeaderProps) => (
-  <Th
+const Header = (props: StatLabelProps) => (
+  <StatLabel
     fontSize='sm'
     fontWeight='normal'
     textColor='gray.400'
@@ -33,8 +28,9 @@ const Header = (props: TableColumnHeaderProps) => (
     {...props}
   />
 );
-const Cell = (props: TableCellProps) => (
-  <Td
+
+const Value = (props: StatNumberProps) => (
+  <StatNumber
     fontSize='xl'
     fontWeight='bold'
     textColor='white'
@@ -49,64 +45,44 @@ const Cell = (props: TableCellProps) => (
 function Margin(props: Props) {
   const mode = props.isolated === undefined ? '없음' : props.isolated ? '격리' : '교차';
   const isCross = mode === '교차';
-  const posSide = props.positionSide === 'BUY' ? '롱 청산 가격' : '숏 청산 가격';
-  const posSideColor = props.positionSide === 'BUY' ? Colors.bull : Colors.bear;
-  const posSideIcon = props.positionSide === 'BUY' ? <FcBullish size={36} /> : <FcBearish size={36} />
-  const liqPriceTooltip = (
-    <div className='flex justify-center items-center space-x-2'>
-      {posSideIcon}
-      <Text textAlign='center' fontWeight='bold' fontSize='lg' textColor={posSideColor}>{posSide}</Text>
-    </div>
-  );
+  const posSideArrow = props.positionSide === 'BUY' ? <StatArrow ml={1} type='increase' /> : <StatArrow ml={1} type='decrease' />;
+  const leverageColor = judgeLeverage(Number(props.leverage));
 
   return (
     <div>
-      <Table size='sm'>
-        <Thead>
-          <Tr>
-            <Header>마진 모드</Header>
-            <Header>레버리지</Header>
-            <Header>예상 청산가</Header>
-          </Tr>
-        </Thead>
-        <Tbody>
-          <Tr>
-            <Cell>{mode}</Cell>
-            <Cell textColor='white'>{props.leverage === undefined ? '없음' : `${props.leverage}x`}</Cell>
-            <Cell textColor={isCross ? 'gray.600' : 'white'}>
-              <Tooltip
-                hasArrow
-                padding={2}
-                bgColor='gray.700'
-                placement='bottom'
-                textColor='white'
-                label={isCross ? '추후 지원 예정' : liqPriceTooltip}
-                fontWeight='bold'
-              >
+      <StatGroup>
+        <Stat>
+          <Header>마진 모드</Header>
+          <Value>{mode}</Value>
+        </Stat>
+        <Stat>
+          <Header>레버리지</Header>
+          <Value textColor={leverageColor}>{props.leverage === undefined ? '없음' : `${props.leverage}x`}</Value>
+        </Stat>
+        <Stat>
+          <Header>예상 청산가</Header>
+          {
+            isCross ?
+              <Value textColor='gray.700'>미지원</Value> :
+              <>
+              <Value 
+                as={'button'}
+                onClick={props.onSwitchLongShort} 
+                textColor='orange.400'
+                >
                 {
-                  isCross ? 
-                    '미지원' : 
-                    <Button 
-                      className='m-0' 
-                      onClick={props.onSwitchLongShort} 
-                      variant='link' 
-                      textColor='orange.400'
-                      fontSize='xl'
-                    >
-                      {
-                        props.liquidation ? 
-                          (props.liquidation === 0 ? 
-                            '--' : 
-                            props.liquidation.toLocaleString('ko-KR', { maximumFractionDigits: 1 })) : 
-                          '0'
-                      }
-                    </Button>
+                  props.liquidation ?
+                    (props.liquidation === 0 ?
+                      '--' :
+                      props.liquidation.toLocaleString('ko-KR', { maximumFractionDigits: 1 })) :
+                    '-'
                 }
-              </Tooltip>
-            </Cell>
-          </Tr>
-        </Tbody>
-      </Table>
+                {posSideArrow}
+              </Value>
+              </>
+          }
+        </Stat>
+      </StatGroup>
     </div>
   )
 }

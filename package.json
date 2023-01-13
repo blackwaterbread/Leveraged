@@ -38,6 +38,7 @@
     "electron-store": "^8.1.0",
     "framer-motion": "^8.4.2",
     "luxon": "^3.2.1",
+    "nanoid": "^4.0.0",
     "node-binance-api": "^0.13.1"
   },
   "devDependencies": {

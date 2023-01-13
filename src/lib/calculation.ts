@@ -1,4 +1,5 @@
 import { DateTime } from "luxon";
+import { Colors } from "./theme";
 
 const M125x = [
     [50000,     0.4,  0],
@@ -63,6 +64,14 @@ const MLOOKUP = new Map([
     ['OTHERS', M50x]
 ]);
 
+const LEVERAGE_LEVEL = [
+    [0, Colors.bull],
+    [6, 'cyan.400'],
+    [13, Colors.binance],
+    [51, Colors.funding],
+    [76, Colors.bear]
+]
+
 export function calculateLiquidationPrice(symbol: string, positionRisks: IPositionRisks) {
     const { walletBalance, positionSize: size, positionSide, leverage, entryPrice } = positionRisks;
     const side = positionSide === 'BUY' ? 1 : -1;
@@ -102,4 +111,28 @@ export function convertMillisTime(time: number) {
 
 export function sum(array: Array<number> | Array<string>) {
     return array.map(x => Number(x)).reduce((x, y) => x + y, 0);
+}
+
+export function inRange(n: number, start: number, end?: number) {
+    if (end && start > end) [end, start] = [start, end];
+    return end == null ? n >= 0 && n < start : n >= start && n < end;
+};
+
+export function judgeLeverage(leverage: number): string {
+    if (isNaN(leverage)) {
+        return 'gray.700';
+    }
+    for (let i = 0; i < LEVERAGE_LEVEL.length; i++) {
+        const currentLevel = LEVERAGE_LEVEL[i];
+        const nextLevel = LEVERAGE_LEVEL[i + 1];
+        if (nextLevel) {
+            if (inRange(leverage, currentLevel[0] as number, nextLevel[0] as number)) {
+                return currentLevel[1] as string;
+            }
+        }
+        else {
+            return currentLevel[1] as string;
+        }
+    }
+    return 'gray.700';
 }
