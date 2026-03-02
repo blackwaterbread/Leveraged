@@ -3,7 +3,8 @@ import ElectronStore from 'electron-store';
 import installExtension, { REACT_DEVELOPER_TOOLS } from 'electron-devtools-installer';
 import path from 'path';
 
-const isDebug = process.argv.includes('-d') || process.argv.includes('--debug');
+const isDebug = process.argv.includes('-d') || process.argv.includes('--devtools');
+const isTestnet = process.argv.includes('-t') || process.argv.includes('--testnet');
 let mainWindow: BrowserWindow | null = null;
 
 function createWindow() {
@@ -23,13 +24,18 @@ function createWindow() {
             contextIsolation: true,
             webSecurity: app.isPackaged,
             preload: path.join(__dirname, '../preload/index.mjs'),
-            devTools: !app.isPackaged || isDebug
+            devTools: !app.isPackaged || isDebug,
+            additionalArguments: [
+                ...(isDebug ? ['--devtools'] : []),
+                ...(isTestnet ? ['--testnet'] : []),
+            ]
         },
     });
 
     if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {
         mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']);
-    } else {
+    }
+    else {
         mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
     }
 
@@ -41,6 +47,7 @@ function createWindow() {
         if (process.platform !== 'darwin') app.quit();
         else mainWindow = null;
     });
+
     mainWindow.focus();
 
     mainWindow.webContents.setWindowOpenHandler(({ url }) => {

@@ -194,7 +194,8 @@ interface Window {
         },
         setSize: (width: number, height: number) => void,
         setResizable: (resizable: boolean) => void,
-        isDevelopment: () => boolean
+        isDevelopment: () => boolean,
+        isTestnet: () => boolean
     },
     Store: {
         get: (key: string) => any,

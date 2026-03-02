@@ -14,7 +14,7 @@ import { AuthenticationStore, ApplicationConfigsStore, IStoreApplicationConfigs 
 import Recently from 'components/Recently';
 import { debugLog } from 'lib/debug';
 const { Application, Binance } = window;
-const URL_WSS = Application.isDevelopment() ? 'wss://stream.binancefuture.com/ws/' : 'wss://fstream.binance.com/ws/';
+const URL_WSS = Application.isTestnet() ? 'wss://stream.binancefuture.com/ws/' : 'wss://fstream.binance.com/ws/';
 
 interface Props {
   onLogout: () => void,

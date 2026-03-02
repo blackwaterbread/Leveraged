@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { app, contextBridge, ipcRenderer } from 'electron';
 import Store from 'electron-store';
 import Binance from 'node-binance-api';
 
@@ -13,7 +13,8 @@ contextBridge.exposeInMainWorld('Application', {
     },
     setSize: (width: number, height: number) => { ipcRenderer.send('setSize', width, height) },
     setResizable: (resizable: boolean) => { ipcRenderer.send('setResizable', resizable); },
-    isDevelopment: () => process.env.NODE_ENV === 'development' || process.argv.includes('-d') || process.argv.includes('--debug')
+    isDevelopment: () => process.env.NODE_ENV === 'development' || process.argv.includes('-d') || process.argv.includes('--devtools'),
+    isTestnet: () => process.env.NODE_ENV === 'development' || process.argv.includes('-t') || process.argv.includes('--testnet')
 });
 
 contextBridge.exposeInMainWorld('Store', {
@@ -28,7 +29,7 @@ contextBridge.exposeInMainWorld('Binance', {
             APIKEY: apiKey,
             APISECRET: apiSecret,
             recvWindow: 60000,
-            test: process.env.NODE_ENV === 'development',
+            test: process.env.NODE_ENV === 'development' || process.argv.includes('-t') || process.argv.includes('--testnet'),
         });
     },
     futuresAccount: () => binance!.futuresAccount(),

@@ -29,14 +29,15 @@ function Register(props: Props) {
       const apiSecret = refAPISecret.current?.value;
       if (apiKey && apiSecret) {
         Binance.init(apiKey, apiSecret);
-        const account = await Binance.futuresAccount();
-        if (account.code) {
-          setIsShowErrorMessage(true);
-          setErrorCode(`Code ${account.code}, ${account.msg}`);
-        }
-        else {
+        try {
+          const account = await Binance.futuresAccount();
           AuthenticationStore.set({ apiKey: apiKey, apiSecret: apiSecret });
           props.onReloadApplication();
+        }
+        catch (error: any) {
+          // {"code":-2015,"msg":"Invalid API-key, IP, or permissions for action"}
+          setIsShowErrorMessage(true);
+          setErrorCode(error.message);
         }
       }
       else {
