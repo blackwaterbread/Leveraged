@@ -13,7 +13,7 @@ contextBridge.exposeInMainWorld('Application', {
     },
     setSize: (width: number, height: number) => { ipcRenderer.send('setSize', width, height) },
     setResizable: (resizable: boolean) => { ipcRenderer.send('setResizable', resizable); },
-    isDevelopment: () => process.env.NODE_ENV === 'development'
+    isDevelopment: () => process.env.NODE_ENV === 'development' || process.argv.includes('-d') || process.argv.includes('--debug')
 });
 
 contextBridge.exposeInMainWorld('Store', {

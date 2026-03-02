@@ -3,6 +3,7 @@ import ElectronStore from 'electron-store';
 import installExtension, { REACT_DEVELOPER_TOOLS } from 'electron-devtools-installer';
 import path from 'path';
 
+const isDebug = process.argv.includes('-d') || process.argv.includes('--debug');
 let mainWindow: BrowserWindow | null = null;
 
 function createWindow() {
@@ -22,7 +23,7 @@ function createWindow() {
             contextIsolation: true,
             webSecurity: app.isPackaged,
             preload: path.join(__dirname, '../preload/index.mjs'),
-            devTools: !app.isPackaged
+            devTools: !app.isPackaged || isDebug
         },
     });
 
@@ -32,7 +33,7 @@ function createWindow() {
         mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
     }
 
-    if (!app.isPackaged) {
+    if (!app.isPackaged || isDebug) {
         mainWindow.webContents.openDevTools({ mode: 'detach' });
     }
 
@@ -63,7 +64,7 @@ app.on('activate', () => {
 });
 
 app.whenReady().then(() => {
-    if (!app.isPackaged) {
+    if (!app.isPackaged || isDebug) {
         installExtension(REACT_DEVELOPER_TOOLS)
             .then((name) => console.log(`Added Extension: ${name}`))
             .catch((err) => console.log('An error occurred: ', err));
