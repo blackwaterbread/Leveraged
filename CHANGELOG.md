@@ -1,3 +1,8 @@
+# 0.3.1
+
+* fixed startup parameter -d/--devtools
+* added startup parameter -t/--testnet
+
 # 0.3.0
 
 * migrated build tool: CRA → electron-vite
