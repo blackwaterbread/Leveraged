@@ -1,6 +1,6 @@
 import { app, BrowserWindow, shell, ipcMain, Menu } from 'electron';
 import ElectronStore from 'electron-store';
-import installExtension, { REACT_DEVELOPER_TOOLS } from 'electron-devtools-installer';
+import { installExtension, REACT_DEVELOPER_TOOLS } from 'electron-devtools-installer';
 import path from 'path';
 
 const isDebug = process.argv.includes('-d') || process.argv.includes('--devtools');
@@ -56,7 +56,14 @@ function createWindow() {
     });
 }
 
-app.on('ready', createWindow);
+app.whenReady().then(async () => {
+    if (!app.isPackaged || isDebug) {
+        await installExtension(REACT_DEVELOPER_TOOLS)
+            .then((name) => console.log(`Added Extension: ${name}`))
+            .catch((err) => console.log('An error occurred: ', err));
+    }
+    createWindow();
+});
 
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
@@ -67,14 +74,6 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
     if (mainWindow === null) {
         createWindow();
-    }
-});
-
-app.whenReady().then(() => {
-    if (!app.isPackaged || isDebug) {
-        installExtension(REACT_DEVELOPER_TOOLS)
-            .then((name) => console.log(`Added Extension: ${name}`))
-            .catch((err) => console.log('An error occurred: ', err));
     }
 });
 
