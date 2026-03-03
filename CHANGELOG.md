@@ -1,3 +1,10 @@
+# 0.4.0
+
+* added fee mode selector
+* added notional cap support: size and fee calculated within leverage tier limit
+* added cross margin liquidation price calculation
+* fixed leverage change not reflecting maxNotionalValue immediately
+
 # 0.3.1
 
 * fixed startup parameter -d/--devtools
