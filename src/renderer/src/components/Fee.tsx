@@ -17,11 +17,10 @@ import {
   Radio,
 } from '@chakra-ui/react';
 import { useState } from 'react';
-import { Text } from '@chakra-ui/react';
-import FooterLabel from './FooterLabel';
 import Stats from './Stats';
 
 const Ratio = [25, 50, 75, 100];
+
 const Header = (props: TableColumnHeaderProps) => (
   <Th
     fontSize='sm'
@@ -33,6 +32,7 @@ const Header = (props: TableColumnHeaderProps) => (
     {...props}
   />
 );
+
 const Cell = (props: TableCellProps) => (
   <Td
     fontSize='sm'
@@ -62,10 +62,10 @@ function Fee(props: Props) {
   const leverage = Number(props.leverage);
   const lastPrice = Number(props.lastPrice);
   const availableBalance = Number(props.availableBalance);
-  const feeRate = feeLevel === 'taker' ? 0.0004 : 0.0002;
-  const getSize = (x: number) => availableBalance * (x / 100) / lastPrice * leverage;
-  const getFee = (ratio: number, size: number) => ((ratio / 100) * size * feeRate) * 2;
+  const feeRate = feeLevel === 'maker' ? 0.0004 : feeLevel === 'taker' ? 0.0008 : 0.0006;
   const stableSize = leverage * availableBalance;
+  const getSize = (x: number) => availableBalance * (x / 100) / lastPrice * leverage;
+  const getFee = (ratio: number, size: number) => (ratio / 100) * size * feeRate;
   const cryptoSize = getSize(props.value);
 
   const onChange = (value: number) => {
@@ -81,14 +81,15 @@ function Fee(props: Props) {
   const setVisibleTooltip = () => setShowTooltip(true);
   const setHiddenTooltip = () => setShowTooltip(false);
 
-  const fee = availableBalance * leverage * props.value / 100 * feeRate * 2;
+  const fee = getFee(props.value, stableSize);
 
   return (
     <div>
       <div className='flex flex-col space-y-2'>
         <RadioGroup className='pt-1' onChange={setFeeLevel} value={feeLevel}>
-          <Stack direction='row'>
+          <Stack className='space-x-2' direction='row'>
             <Radio size='sm' value='maker'>지정가</Radio>
+            <Radio size='sm' value='makertaker'>지정가/시장가</Radio>
             <Radio size='sm' value='taker'>시장가</Radio>
           </Stack>
         </RadioGroup>
