@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, act } from 'react';
 import { Button, Divider, Text, Tooltip } from '@chakra-ui/react';
 import { usePrevious } from '../lib/hooks';
 import { calculateLiquidationPrice, sum } from '../lib/calculation';
@@ -75,12 +75,15 @@ function Main(props: Props) {
 
     const availableBalance = Number(currentAsset.availableBalance);
     const leverage = Number(statePositionRisk.leverage);
-    const initialMargin = availableBalance * (stateInternal.expectedPosRatio / 100);
-    const size = initialMargin * leverage / entryPrice;
+    const maxNotional = Number(statePositionRisk.maxNotionalValue) || Infinity;
+    const maxPossibleNotional = Math.min(availableBalance * leverage, maxNotional);
+    const actualNotional = maxPossibleNotional * (stateInternal.expectedPosRatio / 100);
+    const actualMargin = actualNotional / leverage;
+    const size = actualNotional / entryPrice;
     const baseRisks = { positionSize: size, positionSide: stateInternal.expectedPosSide, leverage, entryPrice };
 
     if (statePositionRisk.marginType === 'isolated') {
-      return calculateLiquidationPrice(stateCurrSymbol, { ...baseRisks, walletBalance: initialMargin });
+      return calculateLiquidationPrice(stateCurrSymbol, { ...baseRisks, walletBalance: actualMargin });
     }
     else {
       const crossWalletBalance = Number(stateFuturesAccount?.totalCrossWalletBalance ?? 0);
@@ -236,7 +239,9 @@ function Main(props: Props) {
       case 'ACCOUNT_CONFIG_UPDATE': {
         // leverage changed: ac.s = symbol, ac.l = new leverage
         if (response.ac?.s === stateCurrSymbol) {
-          setStatePositionRisk(prev => prev ? { ...prev, leverage: String(response.ac.l) } : prev);
+          // Re-fetch positionRisk to get updated maxNotionalValue for the new leverage tier
+          const posRisks = await Binance.futuresPositionRisk(stateCurrSymbol);
+          setStatePositionRisk(posRisks.find(p => p.positionSide === 'BOTH') ?? posRisks[0]);
         }
         break;
       }
@@ -409,6 +414,7 @@ function Main(props: Props) {
             lastPrice={stateFuturesLastPrices?.price}
             leverage={statePositionRisk?.leverage}
             availableBalance={currentAsset?.availableBalance}
+            maxNotionalValue={statePositionRisk?.maxNotionalValue}
           />
         </main>
         <Divider className='py-1' />

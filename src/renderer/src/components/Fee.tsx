@@ -52,7 +52,8 @@ interface Props {
   setValue: (value: number) => void,
   lastPrice?: string,
   leverage?: string,
-  availableBalance?: string
+  availableBalance?: string,
+  maxNotionalValue?: string
 }
 
 function Fee(props: Props) {
@@ -62,10 +63,12 @@ function Fee(props: Props) {
   const leverage = Number(props.leverage);
   const lastPrice = Number(props.lastPrice);
   const availableBalance = Number(props.availableBalance);
+  const maxNotional = Number(props.maxNotionalValue) || Infinity;
+  const maxPossibleNotional = Math.min(availableBalance * leverage, maxNotional);
   const feeRate = feeLevel === 'maker' ? 0.0004 : feeLevel === 'taker' ? 0.0008 : 0.0006;
-  const stableSize = leverage * availableBalance;
-  const getSize = (x: number) => availableBalance * (x / 100) / lastPrice * leverage;
-  const getFee = (ratio: number, size: number) => (ratio / 100) * size * feeRate;
+  const getNotional = (x: number) => maxPossibleNotional * (x / 100);
+  const getSize = (x: number) => getNotional(x) / lastPrice;
+  const getFee = (x: number) => getNotional(x) * feeRate;
   const cryptoSize = getSize(props.value);
 
   const onChange = (value: number) => {
@@ -81,7 +84,7 @@ function Fee(props: Props) {
   const setVisibleTooltip = () => setShowTooltip(true);
   const setHiddenTooltip = () => setShowTooltip(false);
 
-  const fee = getFee(props.value, stableSize);
+  const fee = getFee(props.value);
 
   return (
     <div>
@@ -105,7 +108,7 @@ function Fee(props: Props) {
             {
               Ratio.map(x => {
                 const cSize = getSize(x);
-                const fee = getFee(x, stableSize);
+                const fee = getFee(x);
                 return (
                   <Tr key={`feeKey_${x}`}>
                     <Cell key={`feeKey_per_${x}`}>{x}%</Cell>
