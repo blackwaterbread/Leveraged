@@ -72,12 +72,15 @@ const LEVERAGE_LEVEL = [
     [76, Colors.bear]
 ]
 
-export function calculateLiquidationPrice(symbol: string, positionRisks: IPositionRisks) {
-    const { walletBalance, positionSize: size, positionSide, leverage, entryPrice } = positionRisks;
+// otherMaintMargin: Cross 마진 전용 — 다른 Cross 포지션들의 유지증거금 합
+// Isolated 마진은 기본값 0 사용
+export function calculateLiquidationPrice(symbol: string, positionRisks: IPositionRisks, otherMaintMargin: number = 0) {
+    const { walletBalance, positionSize: size, positionSide, entryPrice } = positionRisks;
     const side = positionSide === 'BUY' ? 1 : -1;
     const asset = symbol.replace('USDT', '').replace('BUSD', '');
-    const notionalSize = walletBalance * leverage;
+    const notionalSize = size * entryPrice;
     const mTable = MLOOKUP.get(asset) ?? MLOOKUP.get('OTHERS')!;
+    
     let mRatio = 0, mAmount = 0;
     for (const mRow of mTable) {
         if (notionalSize < mRow[0]) {
@@ -86,14 +89,18 @@ export function calculateLiquidationPrice(symbol: string, positionRisks: IPositi
             break;
         }
     }
+
     // Fallback: notional exceeds all tier thresholds — use highest tier
     if (mRatio === 0) {
         const lastRow = mTable[mTable.length - 1];
         mRatio = lastRow[1] / 100;
         mAmount = lastRow[2];
     }
-    // P = (WB + cum - side × size × EP) / (size × (MMR - side))
-    const f1 = walletBalance + mAmount - (side * size * entryPrice);
+
+    // Isolated: P = (WB + cum - side × size × EP) / (size × (MMR - side))
+    // Cross:    P = (WB + PnL_other - ΣMM_other + cum - side × size × EP) / (size × (MMR - side))
+    // Cross 호출 시 walletBalance = totalCrossWalletBalance + otherUnrealizedPnl 으로 전달
+    const f1 = walletBalance - otherMaintMargin + mAmount - (side * size * entryPrice);
     const f2 = (size * mRatio) - (side * size);
     return f1 / f2;
 }

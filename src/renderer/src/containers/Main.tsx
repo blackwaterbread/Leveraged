@@ -71,24 +71,26 @@ function Main(props: Props) {
 
   const getLiquidationPrice = (entryPrice?: number) => {
     if (stateInternal.expectedPosRatio === 0) return 0;
-    if (statePositionRisk && statePositionRisk.marginType !== 'isolated') return 0;
-    if (currentAsset && statePositionRisk && entryPrice) {
-      const availableBalance = Number(currentAsset.availableBalance);
-      const leverage = Number(statePositionRisk.leverage);
-      const initialMargin = availableBalance * (stateInternal.expectedPosRatio / 100);
-      const size = initialMargin * leverage / entryPrice;
-      
-      return calculateLiquidationPrice(stateCurrSymbol, {
-        // in isolated mode, wb = margin.
-        walletBalance: initialMargin,
-        positionSize: size,
-        positionSide: stateInternal.expectedPosSide,
-        leverage,
-        entryPrice,
-      });
+    if (!currentAsset || !statePositionRisk || !entryPrice) return 0;
+
+    const availableBalance = Number(currentAsset.availableBalance);
+    const leverage = Number(statePositionRisk.leverage);
+    const initialMargin = availableBalance * (stateInternal.expectedPosRatio / 100);
+    const size = initialMargin * leverage / entryPrice;
+    const baseRisks = { positionSize: size, positionSide: stateInternal.expectedPosSide, leverage, entryPrice };
+
+    if (statePositionRisk.marginType === 'isolated') {
+      return calculateLiquidationPrice(stateCurrSymbol, { ...baseRisks, walletBalance: initialMargin });
     }
-    
-    return 0;
+    else {
+      const crossWalletBalance = Number(stateFuturesAccount?.totalCrossWalletBalance ?? 0);
+      const otherCrossPositions = (stateFuturesAccount?.positions ?? [])
+        .filter(p => !p.isolated && p.symbol !== stateCurrSymbol);
+      const otherMaintMargin = otherCrossPositions.reduce((sum, p) => sum + Number(p.maintMargin), 0);
+      const otherUnrealizedPnl = otherCrossPositions.reduce((sum, p) => sum + Number(p.unrealizedProfit), 0);
+
+      return calculateLiquidationPrice(stateCurrSymbol, { ...baseRisks, walletBalance: crossWalletBalance + otherUnrealizedPnl }, otherMaintMargin);
+    }
   };
 
   const initalizeComponent = async () => {

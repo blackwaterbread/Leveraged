@@ -7,7 +7,7 @@ import {
   StatLabelProps,
   StatNumberProps,
 } from '@chakra-ui/react';
-import { judgeLeverage } from 'lib/calculation';
+import { judgeLeverage, getFloatFixed } from 'lib/calculation';
 
 interface Props {
   positionSide: TypePositionSide,
@@ -62,24 +62,20 @@ function Margin(props: Props) {
         <Stat>
           <Header>예상 청산가</Header>
           {
-            isCross ?
-              <Value textColor='gray.700'>미지원</Value> :
-              <>
-              <Value 
-                as={'button'}
-                onClick={props.onSwitchLongShort} 
-                textColor='orange.400'
-                >
-                {
-                  props.liquidation === undefined
-                    ? '-'
-                    : props.liquidation === 0
-                      ? '--'
-                      : props.liquidation.toLocaleString('ko-KR', { maximumFractionDigits: 1 })
-                }
-                {posSideArrow}
-              </Value>
-              </>
+            <Value
+              as={'button'}
+              onClick={props.onSwitchLongShort}
+              textColor='orange.400'
+            >
+              {
+                props.liquidation === undefined
+                  ? '-'
+                  : props.liquidation <= 0
+                    ? '--'
+                    : props.liquidation.toLocaleString('ko-KR', { maximumFractionDigits: getFloatFixed(props.liquidation) })
+              }
+              {posSideArrow}
+            </Value>
           }
         </Stat>
       </StatGroup>
